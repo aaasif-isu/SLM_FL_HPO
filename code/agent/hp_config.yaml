@@ -1,0 +1,129 @@
+# # code/agent/hp_config.yaml
+
+# # Each hyperparameter (learning_rate, weight_decay, etc.) must be a
+# # top-level key in this file.
+
+# learning_rate:
+#   type: float
+#   min: 0.0001
+#   max: 0.01
+#   initial: 0.001
+
+# weight_decay:
+#   type: float
+#   min: 1.0e-6
+#   max: 1.0e-3
+#   initial: 5.0e-5
+
+# optimizer:
+#   type: choice
+#   values: ['AdamW', 'SGD']
+#   initial: 'AdamW'
+
+
+
+
+# code/agent/hp_config.yaml (Temporary change for experiment)
+
+# learning_rate:
+#   type: float
+#   min: 0.0001 
+#   max: 0.01
+#   initial: 0.001
+
+# weight_decay:
+#   type: float
+#   min: 1.0e-6
+#   max: 1.0e-3
+#   initial: 5.0e-5
+
+# optimizer:
+#   type: choice
+#   values: ['AdamW', 'SGD']
+#   initial: 'AdamW'
+
+
+# controls the strength of the "tether" that keeps client models from drifting too far apart. 
+# mu:
+#   type: float
+#   min: 0.001
+#   max: 0.1
+#   initial: 0.01
+
+# mu:
+#   type: float
+#   min: 0.0
+#   max: 0.0
+#   initial: 0.0
+
+# A comprehensive, FedPop-inspired search space
+client_hps:
+  learning_rate:
+    type: float
+    min: 0.0001
+    max: 0.01
+    initial: 0.001
+  weight_decay:
+    type: float
+    min: 1.0e-6
+    max: 0.001
+    initial: 5.0e-5
+  momentum: # For SGD optimizer
+    type: float
+    min: 0.8
+    max: 0.99
+    initial: 0.9
+  optimizer:
+    type: choice
+    values: ['AdamW', 'SGD', 'Adam']
+    initial: 'AdamW'
+  scheduler:
+    type: choice
+    values: ['CosineAnnealingLR', 'StepLR', 'None']
+    initial: 'CosineAnnealingLR'
+  local_epochs:
+    type: int
+    min: 1
+    max: 3
+    initial: 2
+  batch_size:
+    type: choice
+    values: [8, 16, 32, 64, 128]
+    initial: 64
+  dropout_rate:
+    type: float
+    min: 0.0
+    max: 0.5
+    initial: 0.1
+
+server_hps:
+  learning_rate:
+    type: float
+    min: 0.0001
+    max: 0.01
+    initial: 0.001
+  momentum: # For SGD optimizer
+    type: float
+    min: 0.8
+    max: 0.99
+    initial: 0.9
+  optimizer:
+    type: choice
+    values: ['AdamW', 'SGD', 'Adam']
+    initial: 'AdamW'
+  scheduler:
+    type: choice
+    values: ['CosineAnnealingLR', 'StepLR', 'None']
+    initial: 'None'
+
+# Global parameter for FedProx
+# mu:
+#   type: float
+#   min: 0.001
+#   max: 0.1
+#   initial: 0.01
+mu:
+  type: float
+  min: 0.0
+  max: 0.0
+  initial: 0.0

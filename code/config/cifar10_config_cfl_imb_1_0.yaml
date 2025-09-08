@@ -1,0 +1,37 @@
+# Model and Dataset Configuration
+model_name: ResNet18  #ResNet18 #bert #charlstm
+dataset_name: cifar10 #cifar10 #mnist #femnist #shakespeare #pacs #officehome
+imbalance_ratio: 1.0
+train_sample_fraction: 1.0
+test_sample_fraction: 1.0
+min_samples_per_client: 30
+num_clusters: 3
+# num_classes: 10
+# in_channels: 1
+
+# Federated Learning Configuration
+num_clients: 500  #for shakespear 1129 #for pacs 4 #for femnist 3550 (0.003)
+global_epochs: 50
+frac: 0.02  # Fraction of clients participating in each round
+fl_mode: centralized #splitfed #centralized
+
+# --- REMOVED ---
+# local_epochs and batch_size are now optimized by the agent.
+
+# NEW: Training Control Parameters
+training_params:char
+  patience: 20
+  min_delta: 0.01
+
+# HPO Agent Configuration
+hpo_strategy:
+  method: agent # Can be agent, random_search, sha, bo, fixed
+  hpo_checkpoint_path: agent/client_hpo_states.yaml
+  history_window: 5 
+  # Stop optimizing a client if its accuracy hasn't improved for this many rounds.
+  # hpo_patience: 3
+
+  # Example config for SHA strategy (only used if method is 'sha')
+  sha_config:
+    population_size: 27
+    elimination_rate: 3

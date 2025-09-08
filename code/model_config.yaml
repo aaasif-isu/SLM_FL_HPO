@@ -1,0 +1,105 @@
+# ============================================
+# Model and Dataset Configuration
+# ============================================
+
+# The neural network architecture to be used.
+# Options:
+#   - ResNet18  : For image classification tasks (CIFAR-10, MNIST, PACS, OfficeHome)
+#   - bert      : For NLP tasks (Shakespeare, text datasets)
+#   - charlstm  : Character-level LSTM for text-based datasets (Shakespeare)
+model_name: ResNet18
+
+# The dataset to be used in the experiment.
+# Options:
+#   - cifar10
+#   - mnist
+#   - femnist
+#   - shakespeare
+#   - pacs
+#   - officehome
+dataset_name: cifar10
+
+# Controls class imbalance in the dataset.
+# 1.0 means balanced dataset.
+# Values < 1.0 introduce imbalance; e.g., 0.5 means half the samples for some classes.
+imbalance_ratio: 1.0
+
+# Fractions of training and testing data to use.
+# 1.0 means using the full dataset.
+train_sample_fraction: 1.0
+test_sample_fraction: 1.0
+
+# Minimum number of samples each client must have.
+# Prevents clients from having too few data points in federated settings.
+min_samples_per_client: 30
+
+# Number of client clusters to group based on resource profile or data distribution.
+# Used in clustered federated learning or personalized FL.
+num_clusters: 3
+
+
+# ============================================
+# Federated Learning Configuration
+# ============================================
+
+# Total number of participating clients in the federation.
+# Typical values:
+#   - CIFAR-10/MNIST : 500
+#   - FEMNIST        : 3550 (use fractions for scaling, e.g., 0.003)
+#   - Shakespeare    : 1129
+#   - PACS           : 4
+num_clients: 100
+
+# Number of global communication rounds (epochs).
+# Each round consists of multiple local updates and aggregation.
+global_epochs: 50
+
+# Fraction of clients selected per round for training.
+# E.g., 0.3 means 30% of total clients participate each round.
+frac: 0.1
+
+# Federated learning mode.
+# Options:
+#   - splitfed    : Split Federated Learning (model split between client/server)
+#   - centralized : Traditional centralized training (single model)
+fl_mode: splitfed
+
+
+# ============================================
+# Training Control Parameters
+# ============================================
+
+training_params:
+  # Early stopping patience for local training.
+  # Training stops if validation accuracy does not improve for 'patience' epochs.
+  patience: 20
+
+  # Minimum change in validation accuracy to be considered an improvement.
+  min_delta: 0.01
+
+
+# ============================================
+# Hyperparameter Optimization (HPO) Agent Configuration
+# ============================================
+
+hpo_strategy:
+  # The hyperparameter optimization method to use.
+  # Options:
+  #   - agent         : LLM-based HPO agent (dynamic and adaptive)
+  #   - random_search : Randomized hyperparameter search
+  #   - sha           : Successive Halving Algorithm
+  #   - bo            : Bayesian Optimization
+  #   - fixed         : Fixed hyperparameters (no optimization)
+  method: agent
+
+  # Path where the HPO agent saves and loads client-specific HPO state.
+  hpo_checkpoint_path: agent/client_hpo_states.yaml
+
+  # Historical window size (number of past rounds) to use for trend analysis.
+  # 0 disables historical context and uses only current round data.
+  history_window: 5
+
+  # Early stopping for HPO at the client level.
+  # If a client's accuracy hasn't improved for 'hpo_patience' rounds,
+  # the agent stops optimizing that client to save computation.
+  hpo_patience: 3
