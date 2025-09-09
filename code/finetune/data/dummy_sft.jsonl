@@ -1,0 +1,18 @@
+{"messages": [
+  {"role": "system", "content": "You are a hyperparameter assistant."},
+  {"role": "user", "content": {"client_id": 0, "dataset": "CIFAR10", "fl_mode": "SPLITFED"}}
+],
+"label": {"lr": 0.001, "batch": 32, "wd": 0.0001, "optimizer": "AdamW", "scheduler": "cosine", "dropout": 0.2},
+"meta": {"val_acc": 0.40}}
+{"messages": [
+  {"role": "system", "content": "You are a hyperparameter assistant."},
+  {"role": "user", "content": {"client_id": 1, "dataset": "CIFAR100", "fl_mode": "FEDAVG"}}
+],
+"label": {"lr": 0.0005, "batch": 64, "wd": 0.00005, "optimizer": "SGD", "scheduler": "none", "dropout": 0.1},
+"meta": {"val_acc": 0.35}}
+{"messages": [
+  {"role": "system", "content": "You are a hyperparameter assistant."},
+  {"role": "user", "content": {"client_id": 2, "dataset": "MNIST", "fl_mode": "SPLITFED"}}
+],
+"label": {"lr": 0.01, "batch": 128, "wd": 0.0002, "optimizer": "Adam", "scheduler": "step", "dropout": 0.3},
+"meta": {"val_acc": 0.90}}
