@@ -68,3 +68,17 @@ We need the dataset in a specific JSON format so that the SLM can be fine-tuned 
 * `sft_inference.py` → Compare outputs of base vs. fine-tuned model.
 
 This pipeline ensures that the SLM learns to generate high-quality hyperparameters tailored for federated learning clients.
+
+***
+
+### Work in Progress
+
+#### Create DPO Dataset
+
+* Run the following script to create datasets for Direct Preference Optimization (DPO):
+    ```bash
+    python dpo_json.py
+    ```
+    This will create two datasets:
+    * `dpo_flat.jsonl` → used for fine-tuning
+    * `dpo_chat.jsonl` → optional, chat-style format
