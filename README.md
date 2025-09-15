@@ -1,5 +1,8 @@
 ### New README.md
 
+- [Fine-tuning Details](finetune.md)
+
+
 # Agent-Based Per-Client Hyperparameter Optimization in Federated Learning
 
 This project introduces a novel framework for performing dynamic, per-client hyperparameter optimization (HPO) within a Federated Learning (FL) environment. It addresses the limitations of traditional FL, where a single, fixed set of hyperparameters is applied to all clients, often leading to suboptimal performance in heterogeneous settings where client data and resources vary significantly.

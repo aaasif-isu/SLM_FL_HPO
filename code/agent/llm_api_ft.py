@@ -16,7 +16,12 @@ BASE_MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
 # Prefer deterministic outputs for HP JSON (no sampling)
 GEN_KW = dict(
     max_new_tokens=256,
-    do_sample=False,
+    do_sample=True,
+    temperature=0.7,
+    top_p=0.9,
+    top_k=50,
+    repetition_penalty=1.1,
+    
     # If you later want sampling, set do_sample=True and add temperature/top_p/top_k.
 )
 

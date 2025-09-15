@@ -1,112 +1,167 @@
-absl-py
-aiohappyeyeballs
-aiohttp
-aiosignal
-annotated-types
-anyio
-async-timeout
-attrs
-cachetools
-contourpy
-cycler
-datasets
-dill
-docker-pycreds
-et-xmlfile
-exceptiongroup
-fonttools
-frozenlist
-fsspec
-fvcore
-gitdb
-GitPython
-google-auth
-google-auth-oauthlib
-grpcio
-grpcio-tools
-h11
-httpcore
-httpx
-huggingface_hub
-iopath
-Jinja2
-joblib
-jsonpatch
-jsonpointer
-kiwisolver
-langchain-core
-langgraph
-langgraph-checkpoint
-langgraph-prebuilt
-langgraph-sdk
-langsmith
-Markdown
-MarkupSafe
-matplotlib
-multidict
-multiprocess
-networkx
-numpy
-oauthlib
-openpyxl
-orjson
-ormsgpack
-packaging
-pandas
-Pillow
-platformdirs
-portalocker
-propcache
-protobuf
-psutil
-pyarrow
-pyasn1
-pyasn1_modules
-pydantic
-pydantic_core
-Pympler
-pyparsing
-python-dateutil
-python-dotenv
-pytz
-PyYAML
-regex
-requests
-requests-oauthlib
-requests-toolbelt
-rsa
-sacremoses
-safetensors
-scikit-learn
-scipy
-sentry-sdk
-setproctitle
-six
-smmap
-sniffio
-sympy
-tabulate
-tenacity
-tensorboard
-tensorboard-data-server
-tensorboard-plugin-wit
-tensorboardX
-termcolor
-threadpoolctl
-tokenizers
-torch
-torchaudio
-torchvision
-tqdm
-transformers
-triton
-typing-inspection
-typing_extensions
-tzdata
-urllib3
-wandb
-Werkzeug
-xxhash
-yacs
-yarl
-zstandard
+absl-py==2.1.0
+accelerate==0.34.2
+aiohappyeyeballs==2.4.3
+aiohttp==3.10.8
+aiosignal==1.3.1
+anaconda-anon-usage @ file:///croot/anaconda-anon-usage_1710965072196/work
+archspec @ file:///croot/archspec_1709217642129/work
+args==0.1.0
+asttokens==3.0.0
+attrs==24.2.0
+backcall==0.2.0
+beautifulsoup4==4.13.4
+bleach==6.2.0
+boltons @ file:///work/perseverance-python-buildout/croot/boltons_1698851177130/work
+Brotli @ file:///croot/brotli-split_1714483155106/work
+causal-conv1d @ file:///u/aalasif/mamba_project/mamba-profilling/code/causal-conv1d
+certifi @ file:///croot/certifi_1720453481653/work/certifi
+cffi @ file:///croot/cffi_1714483155441/work
+charset-normalizer @ file:///croot/charset-normalizer_1721748349566/work
+clint==0.5.1
+conda @ file:///croot/conda_1722004606466/work
+conda-content-trust @ file:///croot/conda-content-trust_1714483159009/work
+conda-libmamba-solver @ file:///croot/conda-libmamba-solver_1721662679737/work/src
+conda-package-handling @ file:///croot/conda-package-handling_1718138267740/work
+conda_package_streaming @ file:///croot/conda-package-streaming_1718136078615/work
+contourpy==1.3.2
+coverage==7.6.4
+cryptography @ file:///croot/cryptography_1714660666131/work
+cycler==0.12.1
+datasets==3.0.1
+decorator==5.2.1
+defusedxml==0.7.1
+dill==0.3.8
+distro @ file:///croot/distro_1714488253808/work
+docopt==0.6.2
+et_xmlfile==2.0.0
+executing==2.2.0
+fastjsonschema==2.21.1
+filelock==3.16.1
+fonttools==4.57.0
+frozendict @ file:///croot/frozendict_1713194832637/work
+frozenlist==1.4.1
+fsspec==2024.6.1
+grpcio==1.66.2
+huggingface-hub==0.25.1
+idna @ file:///croot/idna_1714398848350/work
+ipython==8.12.3
+jedi==0.19.2
+Jinja2==3.1.4
+jsonpatch @ file:///croot/jsonpatch_1714483231291/work
+jsonpointer==2.1
+jsonschema==4.24.1
+jsonschema-specifications==2025.4.1
+jupyter_client==8.6.3
+jupyter_core==5.8.1
+jupyterlab_pygments==0.3.0
+kiwisolver==1.4.8
+libmambapy @ file:///croot/mamba-split_1714483352891/work/libmambapy
+mamba==0.11.3
+mambapy @ git+https://github.com/alxndrTL/mamba.py.git@939fd527f09f69aec72830cfa3a624807bf8e427
+Markdown==3.7
+MarkupSafe==2.1.5
+matplotlib==3.10.1
+matplotlib-inline==0.1.7
+menuinst @ file:///croot/menuinst_1723567589013/work
+mistune==3.1.3
+mpmath==1.3.0
+multidict==6.1.0
+multiprocess==0.70.16
+nbclient==0.10.2
+nbconvert==7.16.6
+nbformat==5.10.4
+networkx==3.3
+ninja==1.11.1.1
+numpy==1.26.4
+nvidia-cublas-cu11==11.11.3.6
+nvidia-cublas-cu12==12.4.5.8
+nvidia-cuda-cupti-cu11==11.8.87
+nvidia-cuda-cupti-cu12==12.4.127
+nvidia-cuda-nvrtc-cu11==11.8.89
+nvidia-cuda-nvrtc-cu12==12.4.127
+nvidia-cuda-runtime-cu11==11.8.89
+nvidia-cuda-runtime-cu12==12.4.127
+nvidia-cudnn-cu11==8.7.0.84
+nvidia-cudnn-cu12==9.1.0.70
+nvidia-cufft-cu11==10.9.0.58
+nvidia-cufft-cu12==11.2.1.3
+nvidia-curand-cu11==10.3.0.86
+nvidia-curand-cu12==10.3.5.147
+nvidia-cusolver-cu11==11.4.1.48
+nvidia-cusolver-cu12==11.6.1.9
+nvidia-cusparse-cu11==11.7.5.86
+nvidia-cusparse-cu12==12.3.1.170
+nvidia-nccl-cu11==2.20.5
+nvidia-nccl-cu12==2.21.5
+nvidia-nvjitlink-cu12==12.4.127
+nvidia-nvtx-cu11==11.8.86
+nvidia-nvtx-cu12==12.4.127
+openpyxl==3.1.5
+packaging @ file:///croot/packaging_1720101850331/work
+pandas==2.2.3
+pandocfilters==1.5.1
+parso==0.8.4
+pdf2image==1.17.0
+pdfminer.six==20250327
+pdfplumber==0.11.6
+peft==0.13.0
+pexpect==4.9.0
+pickleshare==0.7.5
+pillow==10.4.0
+pipreqs==0.5.0
+platformdirs @ file:///work/perseverance-python-buildout/croot/platformdirs_1701732573265/work
+pluggy @ file:///work/perseverance-python-buildout/croot/pluggy_1698805497733/work
+prompt_toolkit==3.0.51
+protobuf==5.28.2
+psutil==6.0.0
+ptyprocess==0.7.0
+pure_eval==0.2.3
+pyarrow==17.0.0
+pycosat @ file:///croot/pycosat_1714510623388/work
+pycparser @ file:///tmp/build/80754af9/pycparser_1636541352034/work
+Pygments==2.19.2
+pyparsing==3.2.3
+pypdfium2==4.30.1
+PySocks @ file:///work/perseverance-python-buildout/croot/pysocks_1698845478203/work
+pytesseract==0.3.13
+python-dateutil==2.9.0.post0
+pytz==2024.2
+PyYAML==6.0.2
+pyzmq==27.0.0
+referencing==0.36.2
+regex==2024.9.11
+requests @ file:///croot/requests_1721410876868/work
+rpds-py==0.26.0
+ruamel.yaml @ file:///work/perseverance-python-buildout/croot/ruamel.yaml_1698863605521/work
+safetensors==0.4.5
+scipy==1.16.0
+seaborn==0.13.2
+setuptools==72.1.0
+six==1.16.0
+soupsieve==2.7
+stack-data==0.6.3
+sympy==1.13.1
+tensorboard==2.18.0
+tensorboard-data-server==0.7.2
+threadpoolctl==3.6.0
+tinycss2==1.4.0
+tokenizers==0.20.0
+torch==2.3.1+cu118
+torchvision==0.18.1+cpu
+tornado==6.5.1
+tqdm @ file:///croot/tqdm_1716395931952/work
+traitlets==5.14.3
+-e git+https://github.com/huggingface/transformers.git@1d063793318b20654ebb850f48f43e0a247ab7bb#egg=transformers
+triton==3.1.0
+truststore @ file:///work/perseverance-python-buildout/croot/truststore_1701735771625/work
+typing_extensions==4.12.2
+tzdata==2024.2
+urllib3 @ file:///croot/urllib3_1718912636303/work
+wcwidth==0.2.13
+webencodings==0.5.1
+Werkzeug==3.0.4
+wheel==0.43.0
+xxhash==3.5.0
+yarg==0.1.9
+yarl==1.13.1
+zstandard @ file:///croot/zstandard_1714677652653/work
