@@ -9,6 +9,7 @@ import time
 from agent.shared_state import results_queue
 
 from agent.hp_agent import HPAgent
+from agent import shared_state
 
 class HPOStrategy(ABC):
     def __init__(self, initial_search_space: dict, client_states: list, **kwargs):
@@ -68,6 +69,9 @@ class AgentStrategy(HPOStrategy):
         self.detailed_log_filename = detailed_log_filename
         
 
+
+
+
     def _get_reasoned_initial_hps(self, context: dict) -> dict:
         """
         Calls the HPAgent directly to get a reasoned set of HPs for the first run,
@@ -119,20 +123,30 @@ class AgentStrategy(HPOStrategy):
         client_id = context['client_id']
         current_state = self.client_states[client_id]
 
+
         # --- THIS IS THE FINAL, CORRECT LOGIC ---
-        # On subsequent runs, it uses the HPs from the background worker.
-        if current_state.get('concrete_hps'):
+        this_epoch = context['training_args'].get('global_epoch', 0)
+
+        # 1) Prefer HPs prepared by the workflow for THIS epoch
+        mailbox_hps = shared_state.get_and_pop_next_hps(client_id, this_epoch)
+        if mailbox_hps is not None:
+            hps = mailbox_hps
+            current_state['concrete_hps'] = hps
+
+        # 2) Else, reuse any concrete HPs we already have
+        elif current_state.get('concrete_hps'):
             hps = current_state['concrete_hps']
 
-            # analysis_latency = current_state.get('llm_analysis_latency', 0.0)
-            # suggestion_latency = current_state.get('llm_suggestion_latency', 0.0)
-
-        # On the very first run, it gets its own intelligent suggestion.
+        # 3) Else, first-ever time for this client: call "initial" ONCE
         else:
-            hps = self._get_reasoned_initial_hps(context)
+            # Guard against accidental double initial in the same epoch
+            if not shared_state.mark_suggest_once(client_id, this_epoch, "initial"):
+                print(f"[SKIP] Duplicate initial SUGGEST for client {client_id} epoch {this_epoch}")
+                hps = current_state.get('concrete_hps', self._get_initial_hps(self.client_states[client_id]['search_space']))
+            else:
+                hps = self._get_reasoned_initial_hps(context)
+                current_state['concrete_hps'] = hps
 
-            # analysis_latency = 0.0
-            # suggestion_latency = 0.0
 
 
         # The rest of the function proceeds with a valid set of HPs

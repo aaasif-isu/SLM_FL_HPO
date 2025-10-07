@@ -21,6 +21,12 @@ from ssfl.trainer import train_model
 from agent.cpu_worker import background_cpu_work # <-- 2. IMPORT THE CPU WORKER
 from agent.shared_state import results_queue     # <-- 3. IMPORT THE SHARED QUEUE
 
+import json
+#from agent.shared_state import HP_AGENT_STATS, ANALYZER_AGENT_STATS, load_stats
+from agent.shared_state import aggregate_hp_events, aggregate_analyzer_events
+from agent.shared_state import reset_aggregates
+reset_aggregates()
+
 def load_config(path="model_config.yaml"):
     with open(path, "r") as f:
         return yaml.safe_load(f)
@@ -169,6 +175,13 @@ def main():
     results_queue.put((None, None))  # Send the "stop" signal to the worker.
     results_queue.join()  # Wait for the queue to be fully processed before exiting.
     print(" All tasks complete. System shutting down.")
+
+    print("\n===== HP Agent Summary (Aggregated) =====")
+    print(json.dumps(aggregate_hp_events(), indent=2))
+    print("===== Analyzer Agent Summary (Aggregated) =====")
+    print(json.dumps(aggregate_analyzer_events(), indent=2))
+    print("==========================================\n")
+
 
 
     sys.stdout.close()

@@ -1,63 +1,169 @@
+# code/agent/hp_agent.py
+
 import json
+import random
+import re
+from typing import Dict, Tuple, Any, Optional
+
 from .prompts import get_hp_suggestion_prompt
 from .llm_api import call_llm
-import random
+from . import shared_state
+
+import inspect
+import os
 
 class HPAgent:
+    def __init__(self):
+        # Metrics you can inspect or print at the end of training
+        self.metrics: Dict[str, int] = {
+            "hp_calls": 0,                # total times suggest() was called
+            "hp_success": 0,              # times JSON parsed & validated successfully
+            "hp_json_errors": 0,          # times JSON parsing failed
+            "hp_fallback_used": 0,        # times we fell back to initial defaults
+            "clamps": 0,                  # numeric values clamped to [min,max]
+            "invalid_choice_fixed": 0,    # invalid 'choice' auto-corrected
+            "unknown_param_ignored": 0,   # params not in search space (passed through)
+        }
 
-    def _validate_hps(self, hps: dict, search_space: dict, hp_key: str):
-        """Helper to validate a nested HP dictionary (e.g., 'client' or 'server')."""
-        validated_hps = {}
+    # -------------------- metrics helpers --------------------
+
+    def get_stats(self) -> Dict[str, int]:
+        """Return a shallow copy of current counters."""
+        return dict(self.metrics)
+
+    def reset_stats(self) -> None:
+        """Reset all counters to zero."""
+        for k in self.metrics:
+            self.metrics[k] = 0
+
+    # -------------------- validation helpers --------------------
+
+    def _validate_hps(self, hps: dict, search_space: dict, hp_key: str) -> dict:
+        """
+        Validate and sanitize nested HP dicts for a section ('client' or 'server').
+
+        - Clamps numeric params into [min, max]; increments 'clamps' if adjusted.
+        - Replaces invalid 'choice' with a random valid value; increments 'invalid_choice_fixed'.
+        - If a suggested param isn't in the declared search space section, it is passed through
+          (preserving your existing behavior) but counted as 'unknown_param_ignored'.
+        """
+        validated_hps: Dict[str, Any] = {}
         space_key = f"{hp_key}_hps"
-        
+
         if hp_key not in hps or space_key not in search_space:
             return {}
 
         for hp, value in hps[hp_key].items():
             if hp in search_space[space_key]:
                 config = search_space[space_key][hp]
-                param_type = config.get('type')
+                ptype = config.get("type")
 
-                if param_type in ['float', 'int']:
-                    # Clamp the value within the min/max bounds
-                    clamped_value = max(config['min'], min(config['max'], float(value))) # Use float() for safety
-                    if clamped_value != value:
-                        print(f"  - WARNING: Clamped '{hp_key}.{hp}' from {value} to {clamped_value}")
-                    validated_hps[hp] = clamped_value
-                
-                elif param_type == 'choice':
-                    # --- FIX: Handle potential type mismatch (e.g., "32" vs 32) ---
-                    valid_choices = config.get('values', [])
-                    # Try to match by value or by string representation of value
+                if ptype in ["float", "int"]:
+                    # robust float cast; if it fails, clamp to min
+                    try:
+                        num_value = float(value)
+                    except Exception:
+                        num_value = float(config.get("min", 0.0))
+
+                    lo = config.get("min", num_value)
+                    hi = config.get("max", num_value)
+                    clamped = max(lo, min(hi, num_value))
+                    if clamped != num_value:
+                        print(f"  - WARNING: Clamped '{hp_key}.{hp}' from {value} to {clamped}")
+                        self.metrics["clamps"] += 1
+
+                    if ptype == "int":
+                        clamped = int(round(clamped))
+                    validated_hps[hp] = clamped
+
+                elif ptype == "choice":
+                    valid_choices = config.get("values", [])
+                    # accept either exact match or string-equivalent match
                     if value not in valid_choices and str(value) not in [str(c) for c in valid_choices]:
-                        valid_choice = random.choice(valid_choices)
-                        print(f"  - WARNING: Invalid choice for '{hp_key}.{hp}'. Got '{value}', using random choice '{valid_choice}'")
-                        validated_hps[hp] = valid_choice
+                        if valid_choices:
+                            replacement = random.choice(valid_choices)
+                            print(
+                                f"  - WARNING: Invalid choice for '{hp_key}.{hp}'. "
+                                f"Got '{value}', using '{replacement}'"
+                            )
+                            self.metrics["invalid_choice_fixed"] += 1
+                            validated_hps[hp] = replacement
+                        else:
+                            # no declared choices—keep as-is
+                            validated_hps[hp] = value
                     else:
-                        # Return the original correct type from the list, not the LLM's string version
+                        # pick the value from valid_choices to preserve original type (int vs str)
                         try:
-                            # Find the matching choice to preserve original type (int vs str)
-                            correct_value = [c for c in valid_choices if str(c) == str(value)][0]
+                            correct_value = next(c for c in valid_choices if str(c) == str(value))
                             validated_hps[hp] = correct_value
-                        except IndexError: # Should not happen due to the check above, but as a safeguard
-                            validated_hps[hp] = random.choice(valid_choices)
+                        except StopIteration:
+                            validated_hps[hp] = valid_choices[0] if valid_choices else value
                 else:
+                    # unknown/opaque type: keep as-is
                     validated_hps[hp] = value
             else:
+                # Param not declared in search space; keep behavior but count it
+                self.metrics["unknown_param_ignored"] += 1
                 validated_hps[hp] = value
+
         return validated_hps
 
+    # -------------------- main API --------------------
+
+    def suggest(
+        self,
+        client_id: int,
+        cluster_id: int,
+        model_name: str,
+        dataset_name: str,
+        hpo_report: dict,
+        search_space: dict,
+        analysis_from_last_round: Optional[dict] = None,
+        peer_history: Optional[list] = None,
+        arc_cfg: int = 0,
+        total_layers: int = 0,
+    ) -> Tuple[dict, dict]:
+        """
+        Ask the LLM for HPs, parse and validate them, and return (final_hps, token_usage).
+
+        Metrics updated here:
+          - hp_calls: incremented every time
+          - hp_success / hp_json_errors
+          - hp_fallback_used (when JSON invalid or 'hps' missing)
+          - clamps / invalid_choice_fixed / unknown_param_ignored are updated in _validate_hps
+        """
+
+        # --- WHO called me? (file:line) ---
+        caller = inspect.stack()[1]
+        caller_file = os.path.basename(caller.filename)
+        caller_line = caller.lineno
+        print(f"[TRACE] HPAgent.suggest called from {caller_file}:{caller_line} (client_id={client_id})")
+        # Optional: also stuff this into the event log so it’s visible in aggregates
+        try:
+            from . import shared_state
+            shared_state.log_event("hp", {
+                "hp_calls": 1, "hp_success": 0, "hp_json_errors": 0, "hp_fallback_used": 0,
+                "clamps": 0, "invalid_choice_fixed": 0, "unknown_param_ignored": 0,
+                "caller_file": caller_file, "caller_line": caller_line, "client_id": client_id
+            })
+        except Exception:
+            pass
 
 
-    def suggest(self, client_id, cluster_id, model_name, dataset_name, hpo_report,
-            search_space, analysis_from_last_round: dict | None = None,
-            peer_history: list | None = None, arc_cfg: int = 0, total_layers: int = 0):
-    
+
+        self.metrics["hp_calls"] += 1
+
         prompt = get_hp_suggestion_prompt(
-            client_id=client_id, cluster_id=cluster_id, model_name=model_name,
-            dataset_name=dataset_name, hpo_report=hpo_report,
-            search_space=search_space, analysis_from_last_round=analysis_from_last_round,
-            peer_history=peer_history, arc_cfg=arc_cfg, total_layers=total_layers
+            client_id=client_id,
+            cluster_id=cluster_id,
+            model_name=model_name,
+            dataset_name=dataset_name,
+            hpo_report=hpo_report,
+            search_space=search_space,
+            analysis_from_last_round=analysis_from_last_round,
+            peer_history=peer_history,
+            arc_cfg=arc_cfg,
+            total_layers=total_layers,
         )
 
         response_json_str, token_usage = call_llm(prompt)
@@ -66,68 +172,80 @@ class HPAgent:
         print(f"<<< RESPONSE FROM HP AGENT (Client {client_id}):")
         print(response_json_str)
         print("---" * 20 + "\n")
-        
+
         # =============== ROBUST JSON PARSING ===============
         try:
-            # Clean the response string
-            if not response_json_str or not response_json_str.strip():
+            cleaned = (response_json_str or "").strip()
+            if not cleaned:
                 raise ValueError("Empty response from LLM")
-            
-            # Remove common problematic characters
-            cleaned_response = response_json_str.strip()
-            
-            # Try to extract JSON if it's wrapped in markdown code blocks
-            if "```json" in cleaned_response:
-                start = cleaned_response.find("```json") + 7
-                end = cleaned_response.find("```", start)
+
+            # Handle markdown code fences if any slipped through
+            if "```json" in cleaned:
+                start = cleaned.find("```json") + 7
+                end = cleaned.find("```", start)
                 if end != -1:
-                    cleaned_response = cleaned_response[start:end].strip()
-            elif "```" in cleaned_response:
-                start = cleaned_response.find("```") + 3
-                end = cleaned_response.find("```", start)
+                    cleaned = cleaned[start:end].strip()
+            elif "```" in cleaned:
+                start = cleaned.find("```") + 3
+                end = cleaned.find("```", start)
                 if end != -1:
-                    cleaned_response = cleaned_response[start:end].strip()
-            
-            # Remove control characters that break JSON
-            import re
-            cleaned_response = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', cleaned_response)
-            
-            response_data = json.loads(cleaned_response)
-            llm_reasoning = response_data.get("reasoning", "No reasoning provided.")
-            suggested_hps = response_data.get("hps", {})
-            
+                    cleaned = cleaned[start:end].strip()
+
+            # Strip control chars that might break JSON
+            cleaned = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", cleaned)
+
+            data = json.loads(cleaned)
+            # optional: could log reasoning if you like
+            # reasoning = data.get("reasoning", "No reasoning provided.")
+            suggested_hps = data.get("hps", {})
+
             if not isinstance(suggested_hps, dict) or not suggested_hps:
                 raise ValueError("Response 'hps' key is not a valid, non-empty dictionary.")
-            
-            # print(f"--- [HP Agent Verdict for Client {client_id}] ---")
-            # print(f"  - Reasoning: {llm_reasoning}")
-            #print(f"LLM Suggested HPs (raw): {json.dumps(suggested_hps, indent=2)}")
 
-            # Existing validation logic (unchanged)
             final_hps = {
-                "client": self._validate_hps(suggested_hps, search_space, 'client'),
-                "server": self._validate_hps(suggested_hps, search_space, 'server'),
-                "mu": suggested_hps.get('mu', 0.0)
+                "client": self._validate_hps(suggested_hps, search_space, "client"),
+                "server": self._validate_hps(suggested_hps, search_space, "server"),
+                "mu": suggested_hps.get("mu", 0.0),
             }
-            
-            # Clamp mu as well
-            mu_config = search_space.get('mu', {})
-            if mu_config:
-                final_hps['mu'] = max(mu_config.get('min', 0.0), min(mu_config.get('max', 1.0), final_hps['mu']))
 
-            #print(f"Final suggested HPs (validated): {json.dumps(final_hps, indent=2)}")
-            #print("---")
+            # Clamp mu as well (if present in the search space)
+            mu_cfg = search_space.get("mu", {})
+            if mu_cfg:
+                lo = mu_cfg.get("min", 0.0)
+                hi = mu_cfg.get("max", 1.0)
+                try:
+                    mu_val = float(final_hps["mu"])
+                except Exception:
+                    mu_val = float(lo)
+                mu_clamped = max(lo, min(hi, mu_val))
+                if mu_clamped != mu_val:
+                    print(f"  - WARNING: Clamped 'mu' from {mu_val} to {mu_clamped}")
+                    self.metrics["clamps"] += 1
+                final_hps["mu"] = mu_clamped
+
+            self.metrics["hp_success"] += 1
+            # snapshot to shared state so you can print at end of training
+            shared_state.HP_AGENT_STATS = self.get_stats()
+            shared_state.save_stats("hp", self.get_stats()) 
             return final_hps, token_usage
-            
+
         except (json.JSONDecodeError, ValueError, KeyError) as e:
+            # Count the error and fall back to initial values
+            self.metrics["hp_json_errors"] += 1
+            self.metrics["hp_fallback_used"] += 1
+
             print(f"❌ Error: Could not parse HPs from LLM response: {e}")
-            print(f"   Raw response (first 200 chars): {repr(response_json_str[:200])}")
-            
-            # Fallback to initial values for the full nested structure
+            snippet = (response_json_str or "")[:200]
+            print(f"   Raw response (first 200 chars): {repr(snippet)}")
             print(f"   Using fallback hyperparameters for Client {client_id}")
+
             fallback_hps = {
-                "client": {k: v['initial'] for k, v in search_space.get('client_hps', {}).items()},
-                "server": {k: v['initial'] for k, v in search_space.get('server_hps', {}).items()},
-                "mu": search_space.get('mu', {}).get('initial', 0.0)
+                "client": {k: v["initial"] for k, v in search_space.get("client_hps", {}).items()},
+                "server": {k: v["initial"] for k, v in search_space.get("server_hps", {}).items()},
+                "mu": search_space.get("mu", {}).get("initial", 0.0),
             }
+
+            # snapshot to shared state so you can print at end of training
+            shared_state.HP_AGENT_STATS = self.get_stats()
+            shared_state.save_stats("hp", self.get_stats()) 
             return fallback_hps, token_usage

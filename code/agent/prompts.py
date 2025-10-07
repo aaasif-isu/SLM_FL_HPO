@@ -191,7 +191,7 @@ You are an expert ML engineer and strategist. Your task is to act as a methodica
 - Return a single, valid JSON object with "reasoning" and "hps" keys.
 - The "hps" object must contain "client", "server", and "mu" keys as shown in the example.
 
-⚠️ FINAL INSTRUCTION:
+FINAL INSTRUCTION:
 -Output MUST be a single valid JSON object exactly matching the requested keys.
 -Do not include any explanations outside the JSON.
 -Do not use Markdown or code fences.
@@ -200,12 +200,115 @@ You are an expert ML engineer and strategist. Your task is to act as a methodica
 **EXAMPLE OUTPUT (using actual constraint values):**
 {example_json_str}
 
-⚠️ YOUR RESPONSE MUST BE PURE JSON.
+YOUR RESPONSE MUST BE PURE JSON.
+"""
+
+
+def get_analysis_prompt(
+    client_id: int, cluster_id: int, model_name: str, dataset_name: str,
+    results: dict, current_hps: dict, search_space: dict,
+    global_epoch: int, local_epochs: int
+) -> str:
+    results_str = f"Final Test Accuracy = {results.get('test_acc', [0.0])[-1]:.2f}%"
+
+    # Identify choice vs numeric params dynamically from the current search space.
+    client_cfg = search_space.get("client_hps", {})
+    server_cfg = search_space.get("server_hps", {})
+    client_choice_params = [k for k, v in client_cfg.items() if v.get("type") == "choice"]
+    client_numeric_params = [k for k, v in client_cfg.items() if v.get("type") in ("int", "float")]
+    server_choice_params = [k for k, v in server_cfg.items() if v.get("type") == "choice"]
+    server_numeric_params = [k for k, v in server_cfg.items() if v.get("type") in ("int", "float")]
+
+    # Also surface current bounds so the model doesn’t propose out-of-range values.
+    def _bounds_line(cfg: dict, keys: list[str]) -> str:
+        lines = []
+        for k in keys:
+            p = cfg.get(k, {})
+            if p.get("type") in ("int", "float"):
+                lines.append(f"- {k}: min={p.get('min')}, max={p.get('max')}")
+            elif p.get("type") == "choice":
+                lines.append(f"- {k}: values={p.get('values')}")
+        return "\n".join(lines)
+
+    client_bounds = _bounds_line(client_cfg, list(client_cfg.keys()))
+    server_bounds = _bounds_line(server_cfg, list(server_cfg.keys()))
+
+    task_description = f"Model: {model_name} on {dataset_name}"
+    if model_name.lower() in ["charlstm", "bert"]:
+        guidance_block = """
+**STRATEGIC GUIDANCE (TEXT MODELS):**
+- If overfitting (train ≫ test), tighten learning_rate (lower max) and/or raise dropout upper bound.
+- Be conservative with local_epochs; prefer 1–2 unless clearly underfitting.
+"""
+    else:
+        guidance_block = """
+**STRATEGIC GUIDANCE (IMAGE MODELS):**
+- If overfitting (train ≫ test), lower learning_rate range and/or increase weight_decay range.
+- If underfitting (both low), raise learning_rate range moderately.
+"""
+
+    return f"""
+You are an expert ML HPO analysis agent.
+
+**TASK**
+Analyze performance and propose actions to refine the client's hyperparameter search space for future rounds.
+Return a single JSON object with "reasoning" and "actions".
+
+**CONTEXT**
+- Client: {client_id} (Epoch: {global_epoch + 1}, Capacity: {_get_cluster_capacity_string(cluster_id)})
+- Task: {task_description}
+- HPs Used: {json.dumps(current_hps)}
+- Result: {results_str}
+
+{guidance_block}
+
+**PARAMETERS & CURRENT BOUNDS**
+Client params:
+{client_bounds}
+
+Server params:
+{server_bounds}
+
+**ALLOWED ACTION FORMAT (STRICT)**
+Each action is an object with keys: "param", "key", "value", "target".
+- "target": "client_hps" or "server_hps".
+- "param": EXACT name from the lists below.
+- For CHOICE params (use ONLY "key":"values"):
+  - Client choices: {client_choice_params}
+  - Server choices: {server_choice_params}
+  - "value" MUST be a LIST and MUST be a subset of the current allowed values.
+- For NUMERIC params (use ONLY "key":"min", "key":"max", or "key":"range"):
+  - Client numeric: {client_numeric_params}
+  - Server numeric: {server_numeric_params}
+  - If "key" is "min" or "max": "value" is a NUMBER.
+  - If "key" is "range": "value" is a two-element LIST [new_min, new_max].
+  - All numbers MUST stay within current [min, max].
+
+**DO NOT DO**
+- Do NOT use keys like "x0.5", "x2", "±", or any arithmetic operators.
+- Do NOT invent new params or targets.
+- Do NOT propose values outside the current bounds.
+
+**VALID EXAMPLE**
+{{
+  "reasoning": "Train ≫ test → likely overfitting. Narrow LR, increase WD; reduce batch size options.",
+  "actions": [
+    {{"param":"learning_rate","key":"range","value":[0.0005,0.0015],"target":"client_hps"}},
+    {{"param":"weight_decay","key":"range","value":[5e-05,0.0002],"target":"client_hps"}},
+    {{"param":"batch_size","key":"values","value":[16,32,64],"target":"client_hps"}}
+  ]
+}}
+
+**OUTPUT**
+- Return ONLY a single valid JSON object with "reasoning" and "actions".
+- No extra text, no markdown, no code fences.
+
+**YOUR JSON OUTPUT:**
 """
 
 
 
-def get_analysis_prompt(
+def get_analysis_prompt_old(
     client_id: int, cluster_id: int, model_name: str, dataset_name: str,
     results: dict, current_hps: dict, search_space: dict,
     global_epoch: int, local_epochs: int
@@ -303,13 +406,13 @@ Return a JSON object with "reasoning" and "actions" keys.
     ]
 }}
 
-⚠️ FINAL INSTRUCTION:
+FINAL INSTRUCTION:
 -Output MUST be a single valid JSON object exactly matching the requested keys.
 -Do not include any explanations outside the JSON.
 -Do not use Markdown or code fences.
 -Do not include any introductory or concluding text.
 
-⚠️ YOUR RESPONSE MUST BE PURE JSON.
+YOUR RESPONSE MUST BE PURE JSON.
 
 
 **YOUR JSON OUTPUT:**

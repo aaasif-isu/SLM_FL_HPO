@@ -8,6 +8,7 @@ from .hp_agent import HPAgent
 from .analyzer_agent import AnalyzerAgent
 from ssfl.trainer_utils import log_epoch_metrics 
 import time
+from . import shared_state
 
 # --- HPOState is now correct ---
 # It has a dedicated 'hps' field for the output of the suggest_node.
@@ -75,6 +76,14 @@ def analyze_node(state: HPOState) -> HPOState:
 
 def suggest_node(state: HPOState) -> HPOState:
     print(f"\n>>> Graph Node: SUGGEST for Client {state['client_id']}")
+
+    # 1) GUARD FIRST — skip duplicates before spending an LLM call
+    if not shared_state.mark_suggest_once(state['client_id'], state['global_epoch'], "post_analyze"):
+        print(f"[SKIP] Duplicate post_analyze SUGGEST for client {state['client_id']} epoch {state['global_epoch']}")
+        return state
+
+
+
     start_time = time.time()
     # --- THIS IS THE FIX ---
     # The 'suggest' function now gets the refined search_space from the 'analyze' node.
@@ -101,6 +110,11 @@ def suggest_node(state: HPOState) -> HPOState:
    
     #print(f"  ... LLM response received. HP Suggestion Latency: {end_time - start_time:.2f} seconds.")
     state['hps'] = hps # <-- Put the result in the 'hps' key.
+
+    # Make these HPs available to the strategy for the NEXT epoch
+    next_epoch = state['global_epoch'] + 1
+    shared_state.set_next_hps(state['client_id'], next_epoch, hps)
+
 
     state['llm_suggestion_latency'] = suggestion_latency
 
