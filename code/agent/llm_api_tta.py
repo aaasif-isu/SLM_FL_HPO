@@ -34,7 +34,7 @@ class _AdaptCfg:
     kl_max: float = 0.05         # trust-region size δ
     step_lr: float = 5e-5        # tiny LR for adapter
     max_grad_norm: float = 1.0
-    every_k_rounds: int = 2      # do adapter step every K calls to policy_update
+    every_k_rounds: int = 1      # do adapter step every K calls to policy_update
     lora_r: int = 4
     lora_alpha: int = 16
     lora_dropout: float = 0.05
@@ -299,18 +299,13 @@ def policy_update(
 
     info = {"updated": False, "reason": "", "kl": 0.0}
 
-    print(f"[policy_update] entry: reward={reward:.4f} lyapunov={lyapunov_pass} "
-          f"enabled={_adapt_cfg.enabled} adapter={_adapter_enabled}")
-
     # If no adapter or disabled, just no-op
     if not _adapter_enabled or _optimizer is None or _model_for_infer is None or tokenizer is None:
         info["reason"] = "adapter_unavailable"
-        print(f"[policy_update] exit: {info}")
         return info
 
     if not _adapt_cfg.enabled:
         info["reason"] = "disabled"
-        print(f"[policy_update] exit: {info}")
         return info
 
     _round_counter += 1

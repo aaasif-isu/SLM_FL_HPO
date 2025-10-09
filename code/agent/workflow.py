@@ -10,6 +10,67 @@ from ssfl.trainer_utils import log_epoch_metrics
 import time
 from . import shared_state
 
+# --- On-the-fly adaptation helpers (reward & stability) ---
+
+def _instability_index(state: dict, W: int = 5) -> float:
+    """Combine loss oscillation, HP jumps, and FedProx μ into one [0,1]-ish scalar."""
+    losses = (state.get("recent_losses") or [])[-W:]
+    osc = 0.0
+    if len(losses) >= 2:
+        m = sum(losses) / len(losses)
+        osc = sum((x - m) ** 2 for x in losses) / len(losses)
+
+    prev_hps = state.get("prev_hps") or {}
+    cur_hps  = state.get("hps_used") or {}
+    lr_t  = (cur_hps.get("client") or {}).get("lr")
+    lr_tm = (prev_hps.get("client") or {}).get("lr")
+    b_t   = (cur_hps.get("client") or {}).get("batch_size")
+    b_tm  = (prev_hps.get("client") or {}).get("batch_size")
+
+    import math
+    hp_jump = 0.0
+    if lr_t and lr_tm and lr_t > 0 and lr_tm > 0:
+        hp_jump += abs(math.log(lr_t) - math.log(lr_tm))
+    if b_t and b_tm and b_tm > 0:
+        hp_jump += abs(b_t - b_tm) / b_tm
+
+    mu_used = float(state.get("mu_used") or 0.0)
+
+    # crude normalizations (tweak later if you like)
+    osc_norm = min(1.0, osc / 1e-2)     # 0.01 variance considered large
+    hp_norm  = min(1.0, hp_jump / 1.0)  # jumps > ~1 counted as large
+    mu_norm  = min(1.0, mu_used / 0.1)  # μ > 0.1 considered strong
+
+    return (osc_norm + hp_norm + mu_norm) / 3.0
+
+
+def _lyapunov_pass(state: dict, beta: float = 1.0, eps: float = 1e-3, W: int = 5) -> bool:
+    """V = EMA(loss) + β·oscillation; accept if ΔV <= ε (simple local lookahead)."""
+    losses = (state.get("recent_losses") or [])[-W:]
+    if not losses:
+        return True
+
+    # EMA
+    ema = 0.0
+    alpha = 0.6
+    for x in losses:
+        ema = alpha * x + (1 - alpha) * ema
+
+    # oscillation
+    m = sum(losses) / len(losses)
+    osc = sum((x - m) ** 2 for x in losses) / len(losses)
+
+    Vt = ema + beta * osc
+    if len(losses) >= 2:
+        d_last = losses[-1] - losses[-2]
+        ema_next = alpha * (losses[-1] + d_last) + (1 - alpha) * ema
+    else:
+        ema_next = ema
+    Vnext = ema_next + beta * osc
+
+    return (Vnext - Vt) <= eps
+
+
 # --- HPOState is now correct ---
 # It has a dedicated 'hps' field for the output of the suggest_node.
 class HPOState(TypedDict, total=False):
@@ -82,6 +143,36 @@ def suggest_node(state: HPOState) -> HPOState:
         print(f"[SKIP] Duplicate post_analyze SUGGEST for client {state['client_id']} epoch {state['global_epoch']}")
         return state
 
+    # Pull freshest per-client metrics from shared_state (published by strategies)
+    try:
+        from agent import shared_state as _ss
+        cm = getattr(_ss, "CLIENT_METRICS", {}).get(state["client_id"])
+        if cm:
+            state.setdefault("recent_accs", cm.get("recent_accs", state.get("recent_accs", [])))
+            state.setdefault("recent_losses", cm.get("recent_losses", state.get("recent_losses", [])))
+            state.setdefault("hps_used", cm.get("hps_used", state.get("hps_used", {})))
+            state.setdefault("prev_hps", cm.get("prev_hps", state.get("prev_hps", {})))
+            state.setdefault("mu_used", cm.get("mu_used", state.get("mu_used", 0.0)))
+    except Exception:
+        pass
+
+    # === Compute reward & stability flag for on-the-fly adaptation ===
+    acc_hist = (state.get("recent_accs") or [])[-2:]
+    delta_acc = (acc_hist[-1] - acc_hist[-2]) if len(acc_hist) == 2 else 0.0
+
+    lam = float(state.get("lambda_penalty", 0.5))  # optional: from config/state
+    instability = _instability_index(state)
+    reward = float(delta_acc - lam * instability)
+    state["reward"] = reward
+
+    # Lyapunov gate
+    state["lyapunov_pass"] = _lyapunov_pass(state)
+
+    #New: pass feedback to HPAgent
+    hp_agent.attach_feedback(
+        reward = state["reward"],
+        lyapunov_pass = state["lyapunov_pass"], 
+    )
 
 
     start_time = time.time()
@@ -117,6 +208,9 @@ def suggest_node(state: HPOState) -> HPOState:
 
 
     state['llm_suggestion_latency'] = suggestion_latency
+
+    state["last_prompt"] = getattr(hp_agent, "last_prompt", state.get("last_prompt", ""))
+    state["last_response"] = getattr(hp_agent, "last_response", state.get("last_response", ""))
 
     state['suggestion_prompt_tokens'] = usage.get('prompt_tokens', 0)
     state['suggestion_completion_tokens'] = usage.get('completion_tokens', 0)

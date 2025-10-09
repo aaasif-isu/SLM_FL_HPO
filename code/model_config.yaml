@@ -48,11 +48,11 @@ num_clusters: 3
 #   - FEMNIST        : 3550 (use fractions for scaling, e.g., 0.003)
 #   - Shakespeare    : 1129
 #   - PACS           : 4
-num_clients: 6
+num_clients: 7
 
 # Number of global communication rounds (epochs).
 # Each round consists of multiple local updates and aggregation.
-global_epochs: 2
+global_epochs: 10
 
 # Fraction of clients selected per round for training.
 # E.g., 0.3 means 30% of total clients participate each round.

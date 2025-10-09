@@ -171,23 +171,54 @@ class AgentStrategy(HPOStrategy):
             **training_args_with_loader
         )
 
+    
+
         training_end_time = time.time()
         client_training_time = training_end_time - training_start_time
         print(f"[GPU Worker]: Finished training client {client_id}. Total Time: {client_training_time:.2f}s")
 
-        # # --- CALL THE LOGGER WITH SEPARATE METRICS ---
-        # metrics_to_log = {
-        #     'training_time': round(client_training_time, 4),
-        #     'analysis_latency': round(analysis_latency, 4),
-        #     'suggestion_latency': round(suggestion_latency, 4),
-        #     'accuracy': round(results.get('test_acc', [0.0])[-1], 4)
-        # }
-        # log_epoch_metrics(
-        #     model_name=context['model_name'],
-        #     epoch=context['training_args']['global_epoch'],
-        #     client_id=client_id,
-        #     metrics=metrics_to_log
-        # )
+        # --- Append & publish per-client history for reward/instability ---
+        st = self.client_states[client_id]
+
+        # last metrics
+        try:
+            acc = float(results.get('test_acc', results.get('acc', [0.0]))[-1])
+        except Exception:
+            acc = 0.0
+        try:
+            loss = float(results.get('test_loss', results.get('loss', [0.0]))[-1])
+        except Exception:
+            loss = 0.0
+
+        # hp jump & mu
+        st['prev_hps'] = st.get('hps_used', {})
+        st['hps_used'] = hps
+        try:
+            st['mu_used'] = float(hps.get('mu', 0.0))
+        except Exception:
+            st['mu_used'] = 0.0
+
+        # rolling windows
+        W = getattr(self, 'history_window', 5)
+        st.setdefault('recent_accs', []).append(acc)
+        st.setdefault('recent_losses', []).append(loss)
+        if len(st['recent_accs']) > W:   st['recent_accs']   = st['recent_accs'][-W:]
+        if len(st['recent_losses']) > W: st['recent_losses'] = st['recent_losses'][-W:]
+
+        # publish to shared_state so workflow can read immediately
+        try:
+            shared_state.CLIENT_METRICS  # ensure namespace exists
+        except AttributeError:
+            shared_state.CLIENT_METRICS = {}
+        shared_state.CLIENT_METRICS[client_id] = {
+            "recent_accs": st['recent_accs'],
+            "recent_losses": st['recent_losses'],
+            "hps_used": st['hps_used'],
+            "prev_hps": st['prev_hps'],
+            "mu_used": st['mu_used'],
+        }
+
+
 
         # Offload the results to the background worker for the *next* round's suggestion
         results_for_analyzer = {
@@ -211,9 +242,6 @@ class AgentStrategy(HPOStrategy):
             final_state.get('server_weights'), final_state.get('data_size'),
             final_state
         )
-
-
-
 
 class FixedStrategy(HPOStrategy):
     """

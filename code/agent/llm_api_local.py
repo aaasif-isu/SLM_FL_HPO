@@ -150,7 +150,7 @@ def call_llm(prompt: str) -> Tuple[str, Dict]:
         # Deterministic decoding (no unsupported flags like top_k)
         gen_ids = model.generate(
             **model_inputs,
-            max_new_tokens=256,
+            max_new_tokens=512,
             do_sample=False,           # deterministic
             temperature=0.0,           # ignored when do_sample=False, safe to leave at 0.0
             top_p=1.0,                 # ignored when do_sample=False
