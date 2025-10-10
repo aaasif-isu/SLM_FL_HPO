@@ -14,10 +14,13 @@ results_queue = Queue()
 HP_AGENT_STATS = {}
 ANALYZER_AGENT_STATS = {}
 
+# Last prompt/response per client (so hp_agent instances can share I/O)
+POLICY_IO: dict[int, dict] = {}   # { client_id: {"prompt": str, "response": str} }
 
 
 # ========= Paths =========
 _STATS_DIR = os.path.dirname(__file__)
+
 
 # Per-process last-snapshot files (used to compute deltas)
 def _last_snap_path(name: str, pid: int) -> str:
@@ -89,6 +92,9 @@ def save_stats(name: str, snapshot: dict) -> None:
             "clamps",
             "invalid_choice_fixed",
             "unknown_param_ignored",
+            # NEW: per-caller breakdown
+            "hp_calls_from_strategy",
+            "hp_calls_from_workflow",
         ]
         log_path = _HP_LOG
     else:
@@ -132,6 +138,9 @@ def aggregate_hp_events() -> dict:
         "clamps": 0,
         "invalid_choice_fixed": 0,
         "unknown_param_ignored": 0,
+        # NEW: per-caller breakdown
+        "hp_calls_from_strategy": 0,
+        "hp_calls_from_workflow": 0,
     }
     try:
         if os.path.exists(_HP_LOG):
@@ -207,6 +216,45 @@ def mark_suggest_once(client_id: int, epoch: int, phase: str) -> bool:
         return False
     _SUGGEST_MARKS.add(key)
     return True
+
+# --- Per-client feedback mailbox (reward + lyapunov) ---
+# Used by workflow/analyzer to send a one-shot signal to HPAgent before the next suggest().
+from threading import Lock
+
+_FEEDBACK_LOCK = Lock()
+_FEEDBACK: dict[int, tuple[float, bool]] = {}  # client_id -> (reward, lyapunov_pass)
+
+def attach_feedback(client_id: int, *, reward: float, lyapunov_pass: bool) -> None:
+    """
+    Store a one-shot feedback tuple for this client.
+    Call this in the workflow after you compute reward/lyapunov for a client.
+    """
+    with _FEEDBACK_LOCK:
+        _FEEDBACK[int(client_id)] = (float(reward), bool(lyapunov_pass))
+
+def pop_feedback(client_id: int) -> dict | None:
+    """
+    Retrieve-and-clear feedback for this client. Returns:
+      {"reward": float, "lyapunov_pass": bool}  OR  None if absent.
+    HPAgent.suggest() calls this just before doing an adapter update.
+    """
+    with _FEEDBACK_LOCK:
+        tup = _FEEDBACK.pop(int(client_id), None)
+    if tup is None:
+        return None
+    r, ok = tup
+    return {"reward": r, "lyapunov_pass": ok}
+
+def peek_feedback(client_id: int) -> dict | None:
+    """
+    Non-destructive check (mostly for debugging).
+    """
+    with _FEEDBACK_LOCK:
+        tup = _FEEDBACK.get(int(client_id))
+    if tup is None:
+        return None
+    r, ok = tup
+    return {"reward": r, "lyapunov_pass": ok}
 
 
 

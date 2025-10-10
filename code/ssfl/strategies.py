@@ -28,6 +28,7 @@ class HPOStrategy(ABC):
         # It needs to be updated to handle the new "last_analysis" field.
         if self.client_states and client_id < len(self.client_states):
             global_epoch = context['training_args'].get('global_epoch', -1)
+            
 
             new_report_entry = {
                 "hps_suggested": final_state.get('hps', {}),
@@ -68,9 +69,6 @@ class AgentStrategy(HPOStrategy):
         self.hp_agent = HPAgent()
         self.detailed_log_filename = detailed_log_filename
         
-
-
-
 
     def _get_reasoned_initial_hps(self, context: dict) -> dict:
         """
@@ -125,7 +123,8 @@ class AgentStrategy(HPOStrategy):
 
 
         # --- THIS IS THE FINAL, CORRECT LOGIC ---
-        this_epoch = context['training_args'].get('global_epoch', 0)
+        this_epoch = context['training_args'].get('global_epoch')
+        
 
         # 1) Prefer HPs prepared by the workflow for THIS epoch
         mailbox_hps = shared_state.get_and_pop_next_hps(client_id, this_epoch)
@@ -216,20 +215,49 @@ class AgentStrategy(HPOStrategy):
             "hps_used": st['hps_used'],
             "prev_hps": st['prev_hps'],
             "mu_used": st['mu_used'],
+           
         }
 
 
 
-        # Offload the results to the background worker for the *next* round's suggestion
-        results_for_analyzer = {
-            "client_id": client_id, "results": results, "current_hps": hps,
-            "cluster_id": context['cluster_id'], "model_name": context['model_name'],
-            "dataset_name": context['dataset_name'], "global_epoch": context['training_args']['global_epoch'],
-            "peer_history": context.get("peer_history"),
-            "training_time": client_training_time ,
-            "detailed_log_filename": self.detailed_log_filename
-        }
-        results_queue.put((client_id, results_for_analyzer))
+        # Offload the results to the background worker only if there IS a next epoch
+        this_epoch   = int(context["training_args"]["global_epoch"])   # current
+        total_epochs = int(context["global_epochs"])  
+        #total_epochs = this_epoch
+        has_next_round = (this_epoch + 1) < total_epochs 
+
+        if has_next_round:
+            results_for_analyzer = {
+                "client_id": client_id, "results": results, "current_hps": hps,
+                "cluster_id": context['cluster_id'], "model_name": context['model_name'],
+                "dataset_name": context['dataset_name'], "global_epoch": this_epoch, 
+
+                "global_epochs": total_epochs, "round_idx": context.get("round_idx"), 
+                "total_rounds": context.get("total_rounds"), "phase": context.get("phase"),
+
+                "peer_history": context.get("peer_history"),
+                "training_time": client_training_time,
+                "detailed_log_filename": self.detailed_log_filename,
+                "max_global_epochs": total_epochs,  # optional, in case you want a consumer-side guard too
+            }
+            # --- Safety backfill if any tags are missing ---
+            if results_for_analyzer["round_idx"] is None:
+                results_for_analyzer["round_idx"] = this_epoch + 1       # 1-based
+            if results_for_analyzer["total_rounds"] is None:
+                results_for_analyzer["total_rounds"] = total_epochs
+            if results_for_analyzer["phase"] is None:
+                results_for_analyzer["phase"] = "train"
+
+            # Debug so we can SEE what's enqueued (remove later if noisy)
+            print(f"[ENQUEUE] cid={client_id} phase={results_for_analyzer['phase']} "
+                f"round={results_for_analyzer['round_idx']}/{results_for_analyzer['total_rounds']} "
+                f"epoch={results_for_analyzer['global_epoch']}")
+
+            
+            results_queue.put((client_id, results_for_analyzer))
+        else:
+            print("[CPU Worker]: Skipping analyze/suggest enqueue (final epoch).")
+
 
         final_state = {
             "hps": hps, "results": results, "client_weights": w_c,

@@ -146,7 +146,7 @@ def main():
         target=background_cpu_work,
         args=(client_states,)
     )
-    worker_thread.daemon = True # This allows the main program to exit even if the thread is running.
+    worker_thread.daemon = False # True means :This allows the main program to exit even if the thread is running.
     worker_thread.start()
 
     print(f"Training with {num_clients} clients.")
@@ -171,9 +171,10 @@ def main():
     )
 
     # --- 7.  SHUTDOWN ---
-    print("\nTraining complete. Waiting for final analysis tasks to finish...")
-    results_queue.put((None, None))  # Send the "stop" signal to the worker.
-    results_queue.join()  # Wait for the queue to be fully processed before exiting.
+    print("\nEpochs finished. Finalizing analysis…")
+    results_queue.join()                # wait until the worker processed every queued item
+    results_queue.put((None, None))     # now send sentinel to stop the worker loop
+    worker_thread.join()                # cleanly wait for the worker to exit
     print(" All tasks complete. System shutting down.")
 
     print("\n===== HP Agent Summary (Aggregated) =====")

@@ -1,0 +1,5252 @@
+-   client_id: 0
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0005
+                max: 0.0015
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 5.0e-05
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 2':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 60.5068108974359
+        'Global Epoch: 12':
+            hps_suggested: &id001
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 69.19070512820512
+        'Global Epoch: 14':
+            hps_suggested: *id001
+            final_test_accuracy: 72.09535256410257
+        'Global Epoch: 16':
+            hps_suggested: &id002
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 69.95192307692308
+        'Global Epoch: 17':
+            hps_suggested: *id002
+            final_test_accuracy: 69.9619391025641
+-   client_id: 1
+    final_search_space: &id004
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.001
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 0':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 50.83133012820513
+        'Global Epoch: 2':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 65.59495192307692
+        'Global Epoch: 9':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.9014423076923
+        'Global Epoch: 18':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 78.72596153846153
+-   client_id: 2
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.0005
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 5.0e-05
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 12':
+            hps_suggested: &id003
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 72.20552884615384
+        'Global Epoch: 13':
+            hps_suggested: *id003
+            final_test_accuracy: 70.12219551282051
+        'Global Epoch: 15':
+            hps_suggested: *id003
+            final_test_accuracy: 73.13701923076923
+-   client_id: 3
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 1':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0015
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 62.34975961538461
+        'Global Epoch: 16':
+            hps_suggested: &id005
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 1.0e-06
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 78.18509615384616
+        'Global Epoch: 18':
+            hps_suggested: *id005
+            final_test_accuracy: 78.73597756410257
+-   client_id: 4
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.001
+                max: 0.005
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-05
+                max: 0.001
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 4':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 63.561698717948715
+        'Global Epoch: 8':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 62.810496794871796
+        'Global Epoch: 12':
+            hps_suggested: &id006
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 63.7119391025641
+        'Global Epoch: 14':
+            hps_suggested: *id006
+            final_test_accuracy: 73.40745192307692
+        'Global Epoch: 15':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 71.0536858974359
+-   client_id: 5
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 0':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 57.00120192307692
+        'Global Epoch: 7':
+            hps_suggested: &id007
+                client:
+                    learning_rate: 0.0015
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 70.69310897435898
+        'Global Epoch: 8':
+            hps_suggested: *id007
+            final_test_accuracy: 71.9951923076923
+        'Global Epoch: 9':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 69.64142628205128
+        'Global Epoch: 17':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 76.55248397435898
+-   client_id: 6
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.005
+                max: 0.01
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.001
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 0':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 47.966746794871796
+        'Global Epoch: 3':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 65.3545673076923
+        'Global Epoch: 4':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 66.78685897435898
+        'Global Epoch: 5':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 69.9619391025641
+        'Global Epoch: 11':
+            hps_suggested:
+                client:
+                    learning_rate: 0.005
+                    weight_decay: 1.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.11017628205128
+-   client_id: 7
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.001
+                max: 0.005
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.001
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 0':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 39.93389423076923
+        'Global Epoch: 2':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 61.69871794871795
+        'Global Epoch: 6':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 68.53966346153847
+-   client_id: 8
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 3':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 69.6113782051282
+        'Global Epoch: 4':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 70.15224358974359
+        'Global Epoch: 8':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 74.31891025641026
+        'Global Epoch: 14':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 76.62259615384616
+        'Global Epoch: 18':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 78.26522435897436
+-   client_id: 9
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.001
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.001
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 5':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 70.48277243589743
+        'Global Epoch: 8':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.85136217948718
+        'Global Epoch: 10':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 78.5957532051282
+-   client_id: 10
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0005
+                max: 0.0015
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 5.0e-05
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.1
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 7':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.19030448717949
+        'Global Epoch: 12':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 79.15665064102564
+-   client_id: 11
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.001
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.001
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 10':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 76.81290064102564
+-   client_id: 12
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0005
+                max: 0.0015
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 5.0e-05
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 3':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 16
+                    dropout_rate: 0.5
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 45.93349358974359
+        'Global Epoch: 6':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 62.31971153846154
+        'Global Epoch: 11':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 68.24919871794872
+-   client_id: 13
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 4':
+            hps_suggested: &id008
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 67.71834935897436
+        'Global Epoch: 5':
+            hps_suggested: *id008
+            final_test_accuracy: 70.63301282051282
+        'Global Epoch: 8':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 70.86338141025641
+        'Global Epoch: 18':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 77.43389423076923
+-   client_id: 14
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.001
+                max: 0.002
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.0001
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 0':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 47.99679487179487
+        'Global Epoch: 1':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 60.046073717948715
+        'Global Epoch: 8':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.69110576923077
+        'Global Epoch: 11':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 78.9463141025641
+        'Global Epoch: 15':
+            hps_suggested:
+                client:
+                    learning_rate: 0.002
+                    weight_decay: 0.0001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 80.47876602564102
+-   client_id: 15
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0005
+                max: 0.0015
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 5.0e-05
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 3':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 63.81209935897436
+        'Global Epoch: 4':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 64.60336538461539
+        'Global Epoch: 5':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 63.23116987179487
+        'Global Epoch: 15':
+            hps_suggested: &id009
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 73.96834935897436
+        'Global Epoch: 18':
+            hps_suggested: *id009
+            final_test_accuracy: 73.09695512820512
+-   client_id: 16
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 4':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 70.7832532051282
+        'Global Epoch: 9':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0015
+                    weight_decay: 0.0002
+                    momentum: 0.8
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 128
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 76.14182692307692
+        'Global Epoch: 17':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0015
+                    weight_decay: 0.0002
+                    momentum: 0.8
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 128
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 80.84935897435898
+-   client_id: 17
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.001
+                max: 0.0015
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 5.0e-05
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 1':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 57.59214743589744
+        'Global Epoch: 9':
+            hps_suggested: &id010
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 67.95873397435898
+        'Global Epoch: 10':
+            hps_suggested: *id010
+            final_test_accuracy: 71.42427884615384
+        'Global Epoch: 14':
+            hps_suggested: &id011
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 71.25400641025641
+        'Global Epoch: 16':
+            hps_suggested: *id011
+            final_test_accuracy: 73.87820512820512
+-   client_id: 18
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 13':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 74.80969551282051
+        'Global Epoch: 14':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 74.77964743589743
+        'Global Epoch: 15':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 73.19711538461539
+        'Global Epoch: 16':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 74.94991987179488
+        'Global Epoch: 19':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 76.27203525641026
+-   client_id: 19
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.001
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.001
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 2':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 64.36298076923077
+-   client_id: 20
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 1':
+            hps_suggested:
+                client:
+                    learning_rate: 0.005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.005
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 40.344551282051285
+        'Global Epoch: 2':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 59.79567307692308
+        'Global Epoch: 6':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0015
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.005
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 55.69911858974359
+        'Global Epoch: 9':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0015
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 69.25080128205128
+        'Global Epoch: 19':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 71.64463141025641
+-   client_id: 21
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 7':
+            hps_suggested: &id012
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 72.93669871794872
+        'Global Epoch: 9':
+            hps_suggested: *id012
+            final_test_accuracy: 75.46073717948718
+        'Global Epoch: 13':
+            hps_suggested: &id013
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 78.84615384615384
+        'Global Epoch: 14':
+            hps_suggested: *id013
+            final_test_accuracy: 78.52564102564102
+        'Global Epoch: 18':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 80.57892628205128
+-   client_id: 22
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0005
+                max: 0.0015
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 5.0e-05
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 4':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 69.21073717948718
+        'Global Epoch: 5':
+            hps_suggested: &id014
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 69.50120192307692
+        'Global Epoch: 6':
+            hps_suggested: *id014
+            final_test_accuracy: 72.265625
+-   client_id: 23
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 2':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 63.561698717948715
+        'Global Epoch: 10':
+            hps_suggested: &id015
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.71113782051282
+        'Global Epoch: 11':
+            hps_suggested: *id015
+            final_test_accuracy: 76.23197115384616
+        'Global Epoch: 17':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 78.29527243589743
+-   client_id: 24
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 1':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 64.55328525641026
+        'Global Epoch: 6':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 72.25560897435898
+        'Global Epoch: 8':
+            hps_suggested: &id016
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 73.3173076923077
+        'Global Epoch: 9':
+            hps_suggested: *id016
+            final_test_accuracy: 71.30408653846153
+        'Global Epoch: 19':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.58092948717949
+-   client_id: 25
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 13':
+            hps_suggested: &id017
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 72.21554487179488
+        'Global Epoch: 16':
+            hps_suggested: *id017
+            final_test_accuracy: 73.61778846153847
+        'Global Epoch: 17':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 74.34895833333333
+-   client_id: 26
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.001
+                max: 0.002
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.001
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 8':
+            hps_suggested: &id018
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.33052884615384
+        'Global Epoch: 9':
+            hps_suggested: *id018
+            final_test_accuracy: 76.08173076923077
+        'Global Epoch: 12':
+            hps_suggested: &id019
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 77.75440705128206
+        'Global Epoch: 13':
+            hps_suggested: *id019
+            final_test_accuracy: 79.11658653846153
+        'Global Epoch: 14':
+            hps_suggested: *id019
+            final_test_accuracy: 80.4286858974359
+-   client_id: 27
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0005
+                max: 0.0015
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 5.0e-05
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 3':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 16
+                    dropout_rate: 0.5
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 63.34134615384615
+        'Global Epoch: 6':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 72.7764423076923
+        'Global Epoch: 10':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 73.84815705128206
+-   client_id: 28
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0005
+                max: 0.0015
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 5.0e-05
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 3':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 16
+                    dropout_rate: 0.5
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 60.12620192307692
+        'Global Epoch: 12':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 73.32732371794872
+-   client_id: 29
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0005
+                max: 0.0015
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 5.0e-05
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 1':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 60.88741987179487
+        'Global Epoch: 10':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 67.41786858974359
+        'Global Epoch: 13':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 73.1270032051282
+-   client_id: 30
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.001
+                max: 0.0015
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 9':
+            hps_suggested:
+                client:
+                    learning_rate: 0.005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 76.9931891025641
+        'Global Epoch: 12':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0015
+                    weight_decay: 0.0002
+                    momentum: 0.8
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 128
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 79.85777243589743
+-   client_id: 31
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0005
+                max: 0.001
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 2':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 58.77403846153846
+        'Global Epoch: 13':
+            hps_suggested: &id020
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 74.31891025641026
+        'Global Epoch: 15':
+            hps_suggested: *id020
+            final_test_accuracy: 72.65625
+        'Global Epoch: 16':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 74.6895032051282
+-   client_id: 32
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.0005
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 5.0e-05
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 4':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 62.66025641025641
+        'Global Epoch: 6':
+            hps_suggested: &id021
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 1.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 65.39463141025641
+        'Global Epoch: 7':
+            hps_suggested: *id021
+            final_test_accuracy: 66.69671474358974
+        'Global Epoch: 14':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.13020833333333
+-   client_id: 33
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 2':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 61.618589743589745
+        'Global Epoch: 10':
+            hps_suggested: &id022
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 74.24879807692308
+        'Global Epoch: 11':
+            hps_suggested: *id022
+            final_test_accuracy: 74.23878205128206
+        'Global Epoch: 19':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.61097756410257
+-   client_id: 34
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0005
+                max: 0.0015
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 5.0e-05
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.1
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 3':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 72.56610576923077
+        'Global Epoch: 4':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 73.63782051282051
+        'Global Epoch: 8':
+            hps_suggested: &id023
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 0.0001
+                    momentum: 0.8
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 128
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 78.19511217948718
+        'Global Epoch: 9':
+            hps_suggested: *id023
+            final_test_accuracy: 79.45713141025641
+        'Global Epoch: 15':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 80.80929487179488
+-   client_id: 35
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 1':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0015
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 65.98557692307692
+        'Global Epoch: 5':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 72.01522435897436
+        'Global Epoch: 13':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 77.53405448717949
+        'Global Epoch: 17':
+            hps_suggested: &id024
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 77.83453525641026
+        'Global Epoch: 19':
+            hps_suggested: *id024
+            final_test_accuracy: 77.79447115384616
+-   client_id: 36
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 6':
+            hps_suggested:
+                client:
+                    learning_rate: 0.01
+                    weight_decay: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 73.25721153846153
+        'Global Epoch: 16':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 1.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 76.26201923076923
+-   client_id: 37
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 11':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 78.50560897435898
+        'Global Epoch: 19':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 80.86939102564102
+-   client_id: 38
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 11':
+            hps_suggested: &id025
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 72.86658653846153
+        'Global Epoch: 12':
+            hps_suggested: *id025
+            final_test_accuracy: 74.96995192307692
+        'Global Epoch: 16':
+            hps_suggested: &id026
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 76.1318108974359
+        'Global Epoch: 18':
+            hps_suggested: *id026
+            final_test_accuracy: 77.48397435897436
+        'Global Epoch: 19':
+            hps_suggested: *id026
+            final_test_accuracy: 75.6610576923077
+-   client_id: 39
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0005
+                max: 0.001
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 5':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 70.2724358974359
+        'Global Epoch: 7':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 1.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.005
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 64.27283653846153
+        'Global Epoch: 15':
+            hps_suggested: &id027
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.7011217948718
+        'Global Epoch: 19':
+            hps_suggested: *id027
+            final_test_accuracy: 76.01161858974359
+-   client_id: 40
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.001
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.001
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 7':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 74.24879807692308
+        'Global Epoch: 10':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 74.77964743589743
+        'Global Epoch: 15':
+            hps_suggested: &id028
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 77.84455128205128
+        'Global Epoch: 18':
+            hps_suggested: *id028
+            final_test_accuracy: 75.16025641025641
+        'Global Epoch: 19':
+            hps_suggested: *id028
+            final_test_accuracy: 78.06490384615384
+-   client_id: 41
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 10':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 70.24238782051282
+        'Global Epoch: 18':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 73.23717948717949
+-   client_id: 42
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 5':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 72.17548076923077
+        'Global Epoch: 7':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 74.27884615384616
+        'Global Epoch: 13':
+            hps_suggested: &id029
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 80.40865384615384
+        'Global Epoch: 16':
+            hps_suggested: *id029
+            final_test_accuracy: 78.99639423076923
+        'Global Epoch: 18':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 81.6005608974359
+-   client_id: 43
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 1':
+            hps_suggested:
+                client:
+                    learning_rate: 0.005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.005
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 42.77844551282051
+        'Global Epoch: 5':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 61.18790064102564
+        'Global Epoch: 16':
+            hps_suggested: &id030
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 68.12900641025641
+        'Global Epoch: 17':
+            hps_suggested: *id030
+            final_test_accuracy: 69.73157051282051
+-   client_id: 44
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.001
+                max: 0.001
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.0002
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 1':
+            hps_suggested:
+                client:
+                    learning_rate: 0.005
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.005
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 48.28725961538461
+        'Global Epoch: 12':
+            hps_suggested: &id031
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 69.921875
+        'Global Epoch: 13':
+            hps_suggested: *id031
+            final_test_accuracy: 74.14863782051282
+-   client_id: 45
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 3':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 72.01522435897436
+        'Global Epoch: 10':
+            hps_suggested: &id032
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 1.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 77.95472756410257
+        'Global Epoch: 11':
+            hps_suggested: *id032
+            final_test_accuracy: 77.2235576923077
+        'Global Epoch: 19':
+            hps_suggested:
+                client:
+                    learning_rate: 0.0005
+                    weight_decay: 1.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 80.1582532051282
+-   client_id: 46
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.001
+                max: 0.005
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.001
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 3':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 73.89823717948718
+        'Global Epoch: 6':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 77.3036858974359
+        'Global Epoch: 8':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 77.99479166666667
+        'Global Epoch: 14':
+            hps_suggested: &id033
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 81.2099358974359
+        'Global Epoch: 17':
+            hps_suggested: *id033
+            final_test_accuracy: 81.9511217948718
+-   client_id: 47
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.0005
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 5.0e-05
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 7':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 76.10176282051282
+        'Global Epoch: 14':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.0400641025641
+-   client_id: 48
+    final_search_space:
+        client_hps:
+            learning_rate:
+                type: float
+                min: 0.001
+                max: 0.01
+                initial: 0.001
+            weight_decay:
+                type: float
+                min: 1.0e-06
+                max: 0.001
+                initial: 5.0e-05
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: CosineAnnealingLR
+            local_epochs:
+                type: int
+                min: 1
+                max: 3
+                initial: 2
+            batch_size:
+                type: choice
+                values:
+                - 8
+                - 16
+                - 32
+                - 64
+                - 128
+                initial: 64
+            dropout_rate:
+                type: float
+                min: 0.0
+                max: 0.5
+                initial: 0.1
+        server_hps:
+            learning_rate:
+                type: float
+                min: 0.0001
+                max: 0.01
+                initial: 0.001
+            momentum:
+                type: float
+                min: 0.8
+                max: 0.99
+                initial: 0.9
+            optimizer:
+                type: choice
+                values:
+                - AdamW
+                - SGD
+                - Adam
+                initial: AdamW
+            scheduler:
+                type: choice
+                values:
+                - CosineAnnealingLR
+                - StepLR
+                - None
+                initial: None
+        mu:
+            type: float
+            min: 0.0
+            max: 0.0
+            initial: 0.0
+    original_hpo_report:
+        'Global Epoch: 4':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 63.70192307692308
+        'Global Epoch: 11':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 65.88541666666667
+        'Global Epoch: 15':
+            hps_suggested: &id034
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 69.38100961538461
+        'Global Epoch: 17':
+            hps_suggested: *id034
+            final_test_accuracy: 70.12219551282051
+-   client_id: 49
+    final_search_space: *id004
+    original_hpo_report:
+        'Global Epoch: 2':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 62.990785256410255
+        'Global Epoch: 7':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 75.13020833333333
+        'Global Epoch: 17':
+            hps_suggested:
+                client:
+                    learning_rate: 0.001
+                    weight_decay: 5.0e-05
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: CosineAnnealingLR
+                    local_epochs: 2
+                    batch_size: 64
+                    dropout_rate: 0.1
+                server:
+                    learning_rate: 0.001
+                    momentum: 0.9
+                    optimizer: AdamW
+                    scheduler: None
+                mu: 0.0
+            final_test_accuracy: 78.87620192307692

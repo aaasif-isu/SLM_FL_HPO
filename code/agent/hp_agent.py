@@ -6,11 +6,16 @@ import re
 from typing import Dict, Tuple, Any, Optional
 
 from .prompts import get_hp_suggestion_prompt
-from .llm_api import call_llm, policy_update
+from .llm_api import call_llm
+from .policy_adapter import policy_update, set_active_adapter_key
+
 from . import shared_state
 
 import inspect
 import os
+
+MAX_JSON_RETRY = 1  # keep tiny to avoid storms
+
 
 class HPAgent:
     def __init__(self):
@@ -23,6 +28,9 @@ class HPAgent:
             "clamps": 0,                  # numeric values clamped to [min,max]
             "invalid_choice_fixed": 0,    # invalid 'choice' auto-corrected
             "unknown_param_ignored": 0,   # params not in search space (passed through)
+            # NEW: per-caller breakdown
+            "hp_calls_from_strategy": 0,
+            "hp_calls_from_workflow": 0,
         }
         #New fields to store last prompt/response
         self._last_prompt_by_client: Dict[int, str] = {}
@@ -148,11 +156,9 @@ class HPAgent:
         """
         Ask the LLM for HPs, parse and validate them, and return (final_hps, token_usage).
 
-        Metrics updated here:
-          - hp_calls: incremented every time
-          - hp_success / hp_json_errors
-          - hp_fallback_used (when JSON invalid or 'hps' missing)
-          - clamps / invalid_choice_fixed / unknown_param_ignored are updated in _validate_hps
+        Counters (self.metrics) are cumulative. We snapshot them ONCE per call
+        at the very end via shared_state.save_stats("hp", ...), which writes a delta
+        event using your snapshot files per PID. This keeps logs accurate.
         """
 
         # --- WHO called me? (file:line) ---
@@ -160,25 +166,31 @@ class HPAgent:
         caller_file = os.path.basename(caller.filename)
         caller_line = caller.lineno
         print(f"[TRACE] HPAgent.suggest called from {caller_file}:{caller_line} (client_id={client_id})")
-        # Optional: also stuff this into the event log so it’s visible in aggregates
+
+        # --- NEW: attribute calls to source file for debugging call inflation ---
+        if caller_file == "strategies.py":
+            self.metrics["hp_calls_from_strategy"] += 1
+        elif caller_file == "workflow.py":
+            self.metrics["hp_calls_from_workflow"] += 1
+
+        # Make sure correct adapter is active
         try:
-            from . import shared_state
-            shared_state.log_event("hp", {
-                "hp_calls": 1, "hp_success": 0, "hp_json_errors": 0, "hp_fallback_used": 0,
-                "clamps": 0, "invalid_choice_fixed": 0, "unknown_param_ignored": 0,
-                "caller_file": caller_file, "caller_line": caller_line, "client_id": client_id
-            })
+            set_active_adapter_key(cluster_id)
+        except Exception as e:
+            print(f"[Adapter] WARNING: could not select adapter for cluster {cluster_id}: {e}")
+
+        # Pull pending feedback + last prompt/response (for tiny on-the-fly LoRA update)
+        fb = None
+        try:
+            if hasattr(shared_state, "pop_feedback"):
+                fb = shared_state.pop_feedback(client_id)  # may be None
         except Exception:
-            pass
+            fb = None
+        if fb is None:
+            fb = getattr(self, "_pending_feedback", None)
 
-        # --- PER-CLIENT: load any pending feedback and last I/O ---
-        fb = getattr(self, "_pending_feedback", None)
-
-        # Try to fetch last I/O for THIS client
         last_prompt = self._last_prompt_by_client.get(client_id, "")
         last_response = self._last_response_by_client.get(client_id, "")
-
-        # Optional: also fall back to shared_state if agent instances differ
         try:
             io_map = getattr(shared_state, "POLICY_IO", {})
             prev = io_map.get(client_id)
@@ -195,24 +207,23 @@ class HPAgent:
             f"last_prompt={'Y' if bool(last_prompt) else 'N'} "
             f"last_response={'Y' if bool(last_response) else 'N'}")
 
-        # Tiny on-the-fly update IF we have prior I/O for THIS client
         if fb and last_prompt and last_response:
             try:
+                set_active_adapter_key(cluster_id)
                 _info = policy_update(
                     prompt=last_prompt,
                     response=last_response,
                     reward=fb["reward"],
                     lyapunov_pass=fb["lyapunov_pass"],
                 )
-                print(f"[LoRA Update] client={client_id} reward={fb['reward']:.4f} "
-                    f"lyapunov={fb['lyapunov_pass']} info={_info}")
+                print(f"[LoRA Update] cluster={cluster_id} client={client_id} "
+                    f"reward={fb['reward']:.4f} lyapunov={fb['lyapunov_pass']} info={_info}")
             except Exception as e:
                 print(f"[LoRA Update] client={client_id} ERROR: {e}")
             finally:
-                self._pending_feedback = None
+                self._pending_feedback = None  # one-shot feedback
 
-
-
+        # ---------- one logical "suggest" invocation starts here ----------
         self.metrics["hp_calls"] += 1
 
         prompt = get_hp_suggestion_prompt(
@@ -228,115 +239,359 @@ class HPAgent:
             total_layers=total_layers,
         )
         self._last_prompt_by_client[client_id] = prompt
-        response_json_str, token_usage = call_llm(prompt)
 
-        print("\n" + "---" * 20)
-        print(f"<<< RESPONSE FROM HP AGENT (Client {client_id}):")
-        print(response_json_str)
-        print("---" * 20 + "\n")
+        final_hps: Optional[dict] = None
+        token_usage: dict = {}
+        last_err: Optional[Exception] = None
 
-        # =============== ROBUST JSON PARSING ===============
-        try:
-            cleaned = (response_json_str or "").strip()
-            if not cleaned:
-                raise ValueError("Empty response from LLM")
-
-            # Handle markdown code fences if any slipped through
-            if "```json" in cleaned:
-                start = cleaned.find("```json") + 7
-                end = cleaned.find("```", start)
-                if end != -1:
-                    cleaned = cleaned[start:end].strip()
-            elif "```" in cleaned:
-                start = cleaned.find("```") + 3
-                end = cleaned.find("```", start)
-                if end != -1:
-                    cleaned = cleaned[start:end].strip()
-
-            # Strip control chars that might break JSON
-            cleaned = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", cleaned)
-
-            # Remember response for THIS client for next round
-            self._last_response_by_client[client_id] = cleaned
-
-            # Optional: share via shared_state so other instances (if any) can read it
+        for attempt in range(MAX_JSON_RETRY + 1):
+            # Ensure correct adapter before each attempt
             try:
-                if not hasattr(shared_state, "POLICY_IO"):
-                    shared_state.POLICY_IO = {}
-                shared_state.POLICY_IO[client_id] = {
-                    "prompt": self._last_prompt_by_client.get(client_id, ""),
-                    "response": cleaned,
-                }
-            except Exception:
-                pass
+                set_active_adapter_key(cluster_id)
+            except Exception as e:
+                print(f"[Adapter] WARNING: could not re-select adapter for cluster {cluster_id}: {e}")
 
+            # LLM call
+            response_json_str, token_usage = call_llm(prompt)
 
-            data = json.loads(cleaned)
-            # optional: could log reasoning if you like
-            # reasoning = data.get("reasoning", "No reasoning provided.")
-            suggested_hps = data.get("hps", {})
+            print("\n" + "---" * 20)
+            print(f"<<< RESPONSE FROM HP AGENT (Client {client_id}):")
+            print("we skipped printing the full HP response to avoid clutter")
+            print("---" * 20 + "\n")
 
-            if not isinstance(suggested_hps, dict) or not suggested_hps:
-                raise ValueError("Response 'hps' key is not a valid, non-empty dictionary.")
+            # Try to parse the JSON once per attempt
+            try:
+                cleaned = (response_json_str or "").strip()
+                if not cleaned:
+                    raise ValueError("Empty response from LLM")
 
-            final_hps = {
-                "client": self._validate_hps(suggested_hps, search_space, "client"),
-                "server": self._validate_hps(suggested_hps, search_space, "server"),
-                "mu": suggested_hps.get("mu", 0.0),
-            }
+                # strip markdown fences if present
+                if "```json" in cleaned:
+                    s = cleaned.find("```json") + 7
+                    e = cleaned.find("```", s)
+                    if e != -1:
+                        cleaned = cleaned[s:e].strip()
+                elif "```" in cleaned:
+                    s = cleaned.find("```") + 3
+                    e = cleaned.find("```", s)
+                    if e != -1:
+                        cleaned = cleaned[s:e].strip()
 
-            # Clamp mu as well (if present in the search space)
-            mu_cfg = search_space.get("mu", {})
-            if mu_cfg:
-                lo = mu_cfg.get("min", 0.0)
-                hi = mu_cfg.get("max", 1.0)
+                # strip control chars
+                cleaned = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", cleaned)
+
+                # remember response for THIS client
+                self._last_response_by_client[client_id] = cleaned
                 try:
-                    mu_val = float(final_hps["mu"])
+                    if not hasattr(shared_state, "POLICY_IO"):
+                        shared_state.POLICY_IO = {}
+                    shared_state.POLICY_IO[client_id] = {
+                        "prompt": self._last_prompt_by_client.get(client_id, ""),
+                        "response": cleaned,
+                    }
                 except Exception:
-                    mu_val = float(lo)
-                mu_clamped = max(lo, min(hi, mu_val))
-                if mu_clamped != mu_val:
-                    print(f"  - WARNING: Clamped 'mu' from {mu_val} to {mu_clamped}")
-                    self.metrics["clamps"] += 1
-                final_hps["mu"] = mu_clamped
+                    pass
 
-            self.metrics["hp_success"] += 1
-            # snapshot to shared state so you can print at end of training
-            shared_state.HP_AGENT_STATS = self.get_stats()
-            shared_state.save_stats("hp", self.get_stats()) 
-            return final_hps, token_usage
+                data = json.loads(cleaned)
+                suggested_hps = data.get("hps", {})
+                if not isinstance(suggested_hps, dict) or not suggested_hps:
+                    raise ValueError("Response 'hps' key is not a valid, non-empty dictionary.")
 
-        except (json.JSONDecodeError, ValueError, KeyError) as e:
-            # Count the error and fall back to initial values
-            self.metrics["hp_json_errors"] += 1
-            self.metrics["hp_fallback_used"] += 1
+                final_hps = {
+                    "client": self._validate_hps(suggested_hps, search_space, "client"),
+                    "server": self._validate_hps(suggested_hps, search_space, "server"),
+                    "mu": suggested_hps.get("mu", 0.0),
+                }
 
-            print(f"Error: Could not parse HPs from LLM response: {e}")
-            snippet = (response_json_str or "")[:200]
-            print(f"   Raw response (first 200 chars): {repr(snippet)}")
-            print(f"   Using fallback hyperparameters for Client {client_id}")
+                # clamp mu if configured
+                mu_cfg = search_space.get("mu", {})
+                if mu_cfg:
+                    lo = mu_cfg.get("min", 0.0)
+                    hi = mu_cfg.get("max", 1.0)
+                    try:
+                        mu_val = float(final_hps["mu"])
+                    except Exception:
+                        mu_val = float(lo)
+                    mu_clamped = max(lo, min(hi, mu_val))
+                    if mu_clamped != mu_val:
+                        print(f"  - WARNING: Clamped 'mu' from {mu_val} to {mu_clamped}")
+                        self.metrics["clamps"] += 1
+                    final_hps["mu"] = mu_clamped
 
-            fallback_hps = {
+                self.metrics["hp_success"] += 1
+                break  # success → exit retry loop
+
+            except (json.JSONDecodeError, ValueError, KeyError) as e:
+                last_err = e
+                if attempt < MAX_JSON_RETRY:
+                    print(f"[HPAgent] JSON parse failed (attempt {attempt+1}/{MAX_JSON_RETRY}); retrying… Error: {e}")
+                    continue
+                # no more retries → fall back to initial
+                print(f"Error: Could not parse HPs from LLM response: {e}")
+                snippet = (response_json_str or "")[:200]
+                print(f"   Raw response (first 200 chars): {repr(snippet)}")
+                print(f"   Using fallback hyperparameters for Client {client_id}")
+                self.metrics["hp_json_errors"] += 1
+                self.metrics["hp_fallback_used"] += 1
+                final_hps = {
+                    "client": {k: v["initial"] for k, v in search_space.get("client_hps", {}).items()},
+                    "server": {k: v["initial"] for k, v in search_space.get("server_hps", {}).items()},
+                    "mu": search_space.get("mu", {}).get("initial", 0.0),
+                }
+                break
+
+        # Safety: final_hps must be set by now
+        if final_hps is None:
+            # This should never happen; fallback to initials defensively
+            final_hps = {
                 "client": {k: v["initial"] for k, v in search_space.get("client_hps", {}).items()},
                 "server": {k: v["initial"] for k, v in search_space.get("server_hps", {}).items()},
                 "mu": search_space.get("mu", {}).get("initial", 0.0),
             }
 
-            # Best-effort remember even if JSON failed (helps the next round)
-            clean_try = (response_json_str or "").strip()
-            self._last_response_by_client[client_id] = clean_try
+        # ---- single place to snapshot counters → ONE event delta per suggest() ----
+        shared_state.HP_AGENT_STATS = self.get_stats()
+        shared_state.save_stats("hp", self.get_stats())
+
+        return final_hps, token_usage
+
+
+
+
+
+    def suggest_old(
+        self,
+        client_id: int,
+        cluster_id: int,
+        model_name: str,
+        dataset_name: str,
+        hpo_report: dict,
+        search_space: dict,
+        analysis_from_last_round: Optional[dict] = None,
+        peer_history: Optional[list] = None,
+        arc_cfg: int = 0,
+        total_layers: int = 0,
+    ) -> Tuple[dict, dict]:
+        """
+        Ask the LLM for HPs, parse and validate them, and return (final_hps, token_usage).
+
+        Metrics updated here:
+        - hp_calls: incremented once per call
+        - hp_success / hp_json_errors
+        - hp_fallback_used (when JSON invalid or 'hps' missing)
+        - clamps / invalid_choice_fixed / unknown_param_ignored are updated in _validate_hps
+        """
+
+        # --- WHO called me? (file:line) ---
+        caller = inspect.stack()[1]
+        caller_file = os.path.basename(caller.filename)
+        caller_line = caller.lineno
+        print(f"[TRACE] HPAgent.suggest called from {caller_file}:{caller_line} (client_id={client_id})")
+
+        # Ensure we use the cluster’s adapter (for both tiny update + generation)
+        try:
+            set_active_adapter_key(cluster_id)
+        except Exception as e:
+            print(f"[Adapter] WARNING: could not select adapter for cluster {cluster_id}: {e}")
+
+        # Log event shell (metrics filled later)
+        try:
+            from . import shared_state
+            shared_state.log_event("hp", {
+                "hp_calls": 1, "hp_success": 0, "hp_json_errors": 0, "hp_fallback_used": 0,
+                "clamps": 0, "invalid_choice_fixed": 0, "unknown_param_ignored": 0,
+                "caller_file": caller_file, "caller_line": caller_line, "client_id": client_id
+            })
+        except Exception:
+            pass
+
+        # --- PER-CLIENT: load any pending feedback and last I/O ---
+        fb = None
+        try:
+            if hasattr(shared_state, "pop_feedback"):
+                fb = shared_state.pop_feedback(client_id)  # may return None
+        except Exception:
+            fb = None
+        if fb is None:
+            fb = getattr(self, "_pending_feedback", None)
+
+        last_prompt = self._last_prompt_by_client.get(client_id, "")
+        last_response = self._last_response_by_client.get(client_id, "")
+
+        # Optional: read last I/O from shared mailbox if this instance is fresh
+        try:
+            io_map = getattr(shared_state, "POLICY_IO", {})
+            prev = io_map.get(client_id)
+            if prev:
+                if not last_prompt:
+                    last_prompt = prev.get("prompt", "") or last_prompt
+                if not last_response:
+                    last_response = prev.get("response", "") or last_response
+        except Exception:
+            pass
+
+        print(f"[LoRA Preconditions] client={client_id} "
+            f"fb={'Y' if bool(fb) else 'N'} "
+            f"last_prompt={'Y' if bool(last_prompt) else 'N'} "
+            f"last_response={'Y' if bool(last_response) else 'N'}")
+
+        # Tiny on-the-fly adapter update if we have prior I/O + feedback
+        if fb and last_prompt and last_response:
             try:
-                if not hasattr(shared_state, "POLICY_IO"):
-                    shared_state.POLICY_IO = {}
-                shared_state.POLICY_IO[client_id] = {
-                    "prompt": self._last_prompt_by_client.get(client_id, ""),
-                    "response": clean_try,
+                set_active_adapter_key(cluster_id)
+                _info = policy_update(
+                    prompt=last_prompt,
+                    response=last_response,
+                    reward=fb["reward"],
+                    lyapunov_pass=fb["lyapunov_pass"],
+                )
+                print(f"[LoRA Update] cluster={cluster_id} client={client_id} "
+                    f"reward={fb['reward']:.4f} lyapunov={fb['lyapunov_pass']} info={_info}")
+            except Exception as e:
+                print(f"[LoRA Update] client={client_id} ERROR: {e}")
+            finally:
+                self._pending_feedback = None  # one-shot
+
+        # Count this suggest call once
+        self.metrics["hp_calls"] += 1
+
+        # Build prompt
+        prompt = get_hp_suggestion_prompt(
+            client_id=client_id,
+            cluster_id=cluster_id,
+            model_name=model_name,
+            dataset_name=dataset_name,
+            hpo_report=hpo_report,
+            search_space=search_space,
+            analysis_from_last_round=analysis_from_last_round,
+            peer_history=peer_history,
+            arc_cfg=arc_cfg,
+            total_layers=total_layers,
+        )
+        self._last_prompt_by_client[client_id] = prompt
+
+        used_fallback = False
+        last_err = None
+        token_usage: dict = {}
+        final_hps: Optional[dict] = None
+
+        # === Controlled retry loop ===
+        for attempt in range(MAX_JSON_RETRY + 1):
+            try:
+                # Make sure correct adapter is active before generation
+                try:
+                    set_active_adapter_key(cluster_id)
+                except Exception as e:
+                    print(f"[Adapter] WARNING: could not re-select adapter for cluster {cluster_id}: {e}")
+
+                # Re-call LLM on retry attempts; first attempt also calls it here
+                response_json_str, token_usage = call_llm(prompt)
+
+                print("\n" + "---" * 20)
+                print(f"<<< RESPONSE FROM HP AGENT (Client {client_id}):")
+                print("we skipped printing the full HP response to avoid clutter")
+                # print(response_json_str)
+                print("---" * 20 + "\n")
+
+                # Clean + parse JSON
+                cleaned = (response_json_str or "").strip()
+                if not cleaned:
+                    raise ValueError("Empty response from LLM")
+
+                if "```json" in cleaned:
+                    start = cleaned.find("```json") + 7
+                    end = cleaned.find("```", start)
+                    if end != -1:
+                        cleaned = cleaned[start:end].strip()
+                elif "```" in cleaned:
+                    start = cleaned.find("```") + 3
+                    end = cleaned.find("```", start)
+                    if end != -1:
+                        cleaned = cleaned[start:end].strip()
+
+                cleaned = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", cleaned)
+
+                # Remember response for THIS client for next round
+                self._last_response_by_client[client_id] = cleaned
+                try:
+                    if not hasattr(shared_state, "POLICY_IO"):
+                        shared_state.POLICY_IO = {}
+                    shared_state.POLICY_IO[client_id] = {
+                        "prompt": self._last_prompt_by_client.get(client_id, ""),
+                        "response": cleaned,
+                    }
+                except Exception:
+                    pass
+
+                data = json.loads(cleaned)
+                suggested_hps = data.get("hps", {})
+
+                if not isinstance(suggested_hps, dict) or not suggested_hps:
+                    raise ValueError("Response 'hps' key is not a valid, non-empty dictionary.")
+
+                # Validate/sanitize per section
+                final_hps = {
+                    "client": self._validate_hps(suggested_hps, search_space, "client"),
+                    "server": self._validate_hps(suggested_hps, search_space, "server"),
+                    "mu": suggested_hps.get("mu", 0.0),
                 }
-            except Exception:
-                pass
 
+                # Clamp mu if defined
+                mu_cfg = search_space.get("mu", {})
+                if mu_cfg:
+                    lo = mu_cfg.get("min", 0.0)
+                    hi = mu_cfg.get("max", 1.0)
+                    try:
+                        mu_val = float(final_hps["mu"])
+                    except Exception:
+                        mu_val = float(lo)
+                    mu_clamped = max(lo, min(hi, mu_val))
+                    if mu_clamped != mu_val:
+                        print(f"  - WARNING: Clamped 'mu' from {mu_val} to {mu_clamped}")
+                        self.metrics["clamps"] += 1
+                    final_hps["mu"] = mu_clamped
 
-            # snapshot to shared state so you can print at end of training
-            shared_state.HP_AGENT_STATS = self.get_stats()
-            shared_state.save_stats("hp", self.get_stats()) 
-            return fallback_hps, token_usage
+                # Success: record + return
+                self.metrics["hp_success"] += 1
+                shared_state.HP_AGENT_STATS = self.get_stats()
+                shared_state.save_stats("hp", self.get_stats())
+                return final_hps, token_usage
+
+            except (json.JSONDecodeError, ValueError, KeyError) as e:
+                last_err = e
+                # If we still have retries left, try again; else break to fallback
+                if attempt < MAX_JSON_RETRY:
+                    print(f"[HPAgent] JSON parse failed (attempt {attempt+1}/{MAX_JSON_RETRY}); retrying… Error: {e}")
+                    continue
+                else:
+                    break
+
+        # === Fallback if all attempts failed ===
+        print(f"Error: Could not parse HPs from LLM response: {last_err}")
+        snippet = ("" if token_usage is None else "")  # no need to print again; keep quiet
+        print(f"   Using fallback hyperparameters for Client {client_id}")
+
+        # Count one JSON error and fallback event (once per call)
+        self.metrics["hp_json_errors"] += 1
+        self.metrics["hp_fallback_used"] += 1
+
+        final_hps = {
+            "client": {k: v.get("initial", v.get("default", v.get("min"))) for k, v in search_space.get("client_hps", {}).items()},
+            "server": {k: v.get("initial", v.get("default", v.get("min"))) for k, v in search_space.get("server_hps", {}).items()},
+            "mu": search_space.get("mu", {}).get("initial", 0.0),
+        }
+
+        # Best-effort remember even if JSON failed (helps next round policy_update)
+        try:
+            if not hasattr(shared_state, "POLICY_IO"):
+                shared_state.POLICY_IO = {}
+            shared_state.POLICY_IO[client_id] = {
+                "prompt": self._last_prompt_by_client.get(client_id, ""),
+                "response": (self._last_response_by_client.get(client_id, "") or ""),
+            }
+        except Exception:
+            pass
+
+        shared_state.HP_AGENT_STATS = self.get_stats()
+        shared_state.save_stats("hp", self.get_stats())
+        return final_hps, (token_usage or {})

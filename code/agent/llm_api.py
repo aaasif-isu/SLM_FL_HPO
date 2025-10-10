@@ -3,17 +3,18 @@
 import time
 import json
 import re
-from dataclasses import dataclass
-from typing import Tuple, Dict, Optional, Any
+from typing import Tuple, Dict
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-# --- NEW: LoRA adapter (optional on-the-fly update) ---
-try:
-    from peft import get_peft_model, LoraConfig, TaskType
-    _PEFT_AVAILABLE = True
-except Exception:
-    _PEFT_AVAILABLE = False
+# --- Adaptation runtime (lives in policy_adapter.py) ---
+from .policy_adapter import (
+    init_adapter_runtime,
+    get_infer_model,
+    set_active_adapter_key,   # re-exported for callers (e.g., hp_agent)
+    policy_update,            # re-exported for callers (e.g., hp_agent)
+)
 
 # ===================== Model Selection (unchanged) =====================
 
@@ -22,73 +23,41 @@ model_id = "Qwen/Qwen2.5-0.5B-Instruct"
 
 print(f"Loading local LLM: {model_id}...")
 
+# Expose tokenizer at module scope (policy_adapter references it for sanity checks)
 tokenizer = None
-_base_model = None          # frozen base (weights)
-_model_for_infer = None     # this is what call_llm() uses for generate()
-_adapter_enabled = False    # toggled true if PEFT available & init succeeds
+_base_model = None  # frozen base; policy_adapter will wrap it for LoRA if available
 
-# LoRA / adaptation config (safe small defaults)
-@dataclass
-class _AdaptCfg:
-    enabled: bool = True         # master switch
-    kl_max: float = 0.05         # trust-region size δ
-    step_lr: float = 5e-5        # tiny LR for adapter
-    max_grad_norm: float = 1.0
-    every_k_rounds: int = 2      # do adapter step every K calls to policy_update
-    lora_r: int = 4
-    lora_alpha: int = 16
-    lora_dropout: float = 0.05
-
-_adapt_cfg = _AdaptCfg()
-_round_counter = 0  # counts policy_update calls to apply every_k_rounds
-
-# Helper to know device
-def _device_of(model: AutoModelForCausalLM) -> str:
-    try:
-        return next(model.parameters()).device.type
-    except Exception:
-        return "cpu"
+def _safe_set_pad(tok: AutoTokenizer):
+    if tok.pad_token_id is None:
+        tok.pad_token = tok.eos_token
 
 # Try to load tokenizer and model (same behavior you had)
 try:
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+    _safe_set_pad(tokenizer)
+
     _base_model = AutoModelForCausalLM.from_pretrained(
         model_id,
         device_map="auto",
         trust_remote_code=True,
+    ).eval()
+
+    # Initialize the adaptation runtime (LoRA etc.) around the frozen base.
+    # These knobs are safe defaults; you can later expose them via your config.
+    init_adapter_runtime(
+        base_model=_base_model,
+        tok=tokenizer,
+        cfg={
+            "enabled": True,
+            "lora_r": 4,
+            "lora_alpha": 16,
+            "lora_dropout": 0.05,
+            "step_lr": 5e-5,
+            "max_grad_norm": 1.0,
+            "kl_max": 0.05,
+            "every_k_rounds": 3,   # update check each time feedback arrives
+        },
     )
-    # Ensure pad token exists to avoid attention mask warnings
-    if tokenizer.pad_token_id is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    # By default, use base model for inference
-    _model_for_infer = _base_model.eval()
-
-    # If PEFT is available and adaptation enabled, wrap with LoRA (small, trainable)
-    if _PEFT_AVAILABLE and _adapt_cfg.enabled:
-        lcfg = LoraConfig(
-            task_type=TaskType.CAUSAL_LM,
-            r=_adapt_cfg.lora_r,
-            lora_alpha=_adapt_cfg.lora_alpha,
-            lora_dropout=_adapt_cfg.lora_dropout,
-        )
-        _model_for_infer = get_peft_model(_base_model, lcfg)  # attaches LoRA modules
-        # Freeze non-LoRA params
-        for n, p in _model_for_infer.named_parameters():
-            if "lora_" not in n:
-                p.requires_grad = False
-        _optimizer = torch.optim.AdamW(
-            (p for p in _model_for_infer.parameters() if p.requires_grad),
-            lr=_adapt_cfg.step_lr,
-        )
-        _adapter_enabled = True
-        print("LoRA adapter initialized for on-the-fly updates.")
-    else:
-        _optimizer = None
-        if not _PEFT_AVAILABLE:
-            print("PEFT not available; running without on-the-fly adaptation.")
-        else:
-            print("On-the-fly adaptation disabled by config; using base model only.")
 
     print("Model loaded successfully.")
 except Exception as e:
@@ -96,9 +65,6 @@ except Exception as e:
     print("This might be due to insufficient VRAM or a missing dependency.")
     tokenizer = None
     _base_model = None
-    _model_for_infer = None
-    _optimizer = None
-    _adapter_enabled = False
 
 # ---------- helpers (no change to prompts.py needed) ----------
 
@@ -179,36 +145,6 @@ def _sanitize_to_json(text: str) -> str:
     obj = _first_json_object(s)
     return obj.strip() if obj else s
 
-# ---------- NEW: tiny helpers for adaptation ----------
-
-def _encode_prompt_response(prompt: str, response: str):
-    """
-    Prepare teacher-forced labels so loss is only on response tokens.
-    """
-    assert tokenizer is not None and _model_for_infer is not None
-    tok = tokenizer
-    device = next(_model_for_infer.parameters()).device
-    full = tok(prompt + tok.eos_token + response, return_tensors="pt").to(device)
-    labels = full.input_ids.clone()
-    # mask prompt tokens (no loss over them)
-    num_prompt = len(tok(prompt, return_tensors="pt").input_ids[0]) + 1
-    labels[:, :num_prompt] = -100
-    return full, labels
-
-@torch.no_grad()
-def _logprob_of_response(prompt: str, response: str) -> Tuple[float, int]:
-    """
-    Approximate log-prob of model generating `response` given `prompt`.
-    Returns (total_log_prob, token_count_over_response).
-    """
-    if tokenizer is None or _model_for_infer is None:
-        return 0.0, 1
-    full, labels = _encode_prompt_response(prompt, response)
-    out = _model_for_infer(**full, labels=labels)
-    n_tok = int((labels != -100).sum().item())
-    logp = float(-out.loss.item() * max(n_tok, 1))
-    return logp, n_tok
-
 # ---------- main call (UNCHANGED SIGNATURE) ----------
 
 def call_llm(prompt: str) -> Tuple[str, Dict]:
@@ -217,7 +153,8 @@ def call_llm(prompt: str) -> Tuple[str, Dict]:
     Sanitizes the reply into a parseable JSON string.
     Returns (json_like_text, usage_dict).
     """
-    if _model_for_infer is None or tokenizer is None:
+    model = get_infer_model()
+    if model is None or tokenizer is None:
         print("Model or tokenizer not loaded. Returning empty response.")
         return "", {"prompt_tokens": 0, "completion_tokens": 0}
 
@@ -240,15 +177,16 @@ def call_llm(prompt: str) -> Tuple[str, Dict]:
         )
 
         # Tokenize with attention mask & padding
+        device = next(model.parameters()).device
         model_inputs = tokenizer(
             chat_text,
             return_tensors="pt",
             padding=True,
             truncation=True
-        ).to(next(_model_for_infer.parameters()).device)
+        ).to(device)
 
         # Deterministic decoding (no unsupported flags like top_k)
-        gen_ids = _model_for_infer.generate(
+        gen_ids = model.generate(
             **model_inputs,
             max_new_tokens=512,
             do_sample=False,           # deterministic
@@ -279,88 +217,3 @@ def call_llm(prompt: str) -> Tuple[str, Dict]:
     except Exception as e:
         print(f"An unexpected error occurred during local inference: {e}")
         return "", {"prompt_tokens": 0, "completion_tokens": 0}
-
-# ---------- NEW: optional on-the-fly adaptation entrypoint ----------
-
-def policy_update(
-    *,
-    prompt: str,
-    response: str,
-    reward: float,
-    lyapunov_pass: bool
-) -> Dict[str, Any]:
-    """
-    Optional tiny adapter update to make `response` more/less likely next time,
-    scaled by `reward`. Enforces a KL trust region and a frequency gate.
-    Public signature is NEW but independent; does not alter call_llm() signature.
-    Returns info dict with keys: updated(bool), reason(str), kl(float).
-    """
-    global _round_counter
-
-    info = {"updated": False, "reason": "", "kl": 0.0}
-
-    print(f"[policy_update] entry: reward={reward:.4f} lyapunov={lyapunov_pass} "
-          f"enabled={_adapt_cfg.enabled} adapter={_adapter_enabled}")
-
-    # If no adapter or disabled, just no-op
-    if not _adapter_enabled or _optimizer is None or _model_for_infer is None or tokenizer is None:
-        info["reason"] = "adapter_unavailable"
-        print(f"[policy_update] exit: {info}")
-        return info
-
-    if not _adapt_cfg.enabled:
-        info["reason"] = "disabled"
-        print(f"[policy_update] exit: {info}")
-        return info
-
-    _round_counter += 1
-    if (_round_counter % _adapt_cfg.every_k_rounds) != 0:
-        info["reason"] = "frequency_gate"
-        return info
-
-    if not lyapunov_pass:
-        info["reason"] = "lyapunov_block"
-        return info
-
-    # Encode prompt/response with teacher forcing (loss only on response tokens)
-    full, labels = _encode_prompt_response(prompt, response)
-    n_tok = int((labels != -100).sum().item())
-
-    # Old log-prob for KL proxy
-    with torch.no_grad():
-        old_out = _model_for_infer(**full, labels=labels)
-        old_logp = float(-old_out.loss.item() * max(n_tok, 1))
-
-    # Policy-gradient style objective: min  -reward * log pθ(response|prompt)
-    _model_for_infer.train()
-    _optimizer.zero_grad(set_to_none=True)
-    out = _model_for_infer(**full, labels=labels)
-    logp = -out.loss * n_tok
-    loss = - reward * logp
-    loss.backward()
-    torch.nn.utils.clip_grad_norm_(
-        (p for p in _model_for_infer.parameters() if p.requires_grad),
-        _adapt_cfg.max_grad_norm
-    )
-    _optimizer.step()
-    _model_for_infer.eval()
-
-    # KL trust region (crude per-token proxy): KL ≈ E[log p_old - log p_new]
-    with torch.no_grad():
-        new_out = _model_for_infer(**full, labels=labels)
-        new_logp = float(-new_out.loss.item() * max(n_tok, 1))
-    kl = ((-old_logp) - (-new_logp)) / max(n_tok, 1)
-    info["kl"] = float(kl)
-
-    if kl > _adapt_cfg.kl_max:
-        # Project back toward pre-update weights by interpolation on LoRA params only
-        gamma = max(0.0, min(1.0, _adapt_cfg.kl_max / kl))
-        for n, p in _model_for_infer.named_parameters():
-            if p.requires_grad:  # LoRA params only
-                # "Project" by shrinking the delta (simple, effective)
-                p.data = (1 - gamma) * p.data + gamma * p.data.detach()
-        info["reason"] = "trust_region_project"
-        return info
-
-    info.update(updated=True, reason="ok")
-    return info

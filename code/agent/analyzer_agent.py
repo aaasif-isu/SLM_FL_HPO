@@ -306,7 +306,8 @@ class AnalyzerAgent:
 
         print("\n" + "---" * 20)
         print(f"<<< RESPONSE FROM ANALYZER AGENT (Client {client_id}):")
-        print(response_str)
+        print("we skipped printing the full ANALYZER response to avoid clutter")
+        # print(response_str)
         print("---" * 20 + "\n")
 
         try:

@@ -100,6 +100,12 @@ def train_model(model_name, num_classes, in_channels,
     # --- Main Training Loop ---
     for g_epoch in range(global_epochs):
         print(f"\n=== Global Epoch {g_epoch+1}/{global_epochs} ===")
+
+        # [ADD] round metadata
+        round_idx = g_epoch + 1
+        total_rounds = global_epochs
+        phase = "train" if round_idx < total_rounds else "finalize"
+
         selected = select_participating_clients(num_clients, frac)
 
         # Initialize lists for aggregation based on FL mode
@@ -155,12 +161,23 @@ def train_model(model_name, num_classes, in_channels,
                     "arc_cfg": arc_cfg, # Still passed, but ignored in centralized mode within train_single_client
                     "total_layers": total_layers,
                     "train_subsets": train_subsets,
+                    "global_epochs": global_epochs,
+
+                    # [ADD] round metadata for downstream (AgentStrategy → queue → CPU worker → graph)
+                    "round_idx": round_idx,
+                    "total_rounds": total_rounds,
+                    "phase": phase,
+
+
                     "training_args": {
                         "model_name": model_name, "num_classes": num_classes, "arc_cfg": arc_cfg,
                         "global_model": global_model, "device": device, "in_channels": in_channels,
                         "val_loader": val_loader, "loss_fn": loss_fn,
                         "global_epoch": g_epoch,
-                        "fl_mode": fl_mode # Pass fl_mode to training args
+                        "fl_mode": fl_mode, # Pass fl_mode to training args
+
+
+
                     }
                 }
 

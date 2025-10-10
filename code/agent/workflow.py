@@ -10,9 +10,70 @@ from ssfl.trainer_utils import log_epoch_metrics
 import time
 from . import shared_state
 
-# --- On-the-fly adaptation helpers (reward & stability) ---
+# --- Final-round detector (robust to missing keys) ---
+def _is_final_round(state: dict) -> bool:
+    """
+    Return True iff this item corresponds to the final training round.
+    Prefers ('round_idx','total_rounds'); falls back to ('global_epoch','global_epochs').
+    """
+    r = state.get("round_idx")
+    T = state.get("total_rounds")
+    if r is not None and T is not None:
+        try:
+            return int(r) >= int(T)
+        except Exception:
+            pass
 
+    # Fallback: global_epoch is 0-based; global_epochs is the total count
+    ge = state.get("global_epoch")
+    gE = state.get("global_epochs") or state.get("total_rounds")
+    if ge is not None and gE is not None:
+        try:
+            return int(ge) + 1 >= int(gE)
+        except Exception:
+            pass
+
+    # If we cannot determine, assume not final (safe default)
+    return False
+
+
+# --- On-the-fly adaptation helpers (reward & stability) ---
 def _instability_index(state: dict, W: int = 5) -> float:
+    losses = (state.get("recent_losses") or [])[-W:]
+    osc = 0.0
+    if len(losses) >= 3:
+        m = sum(losses) / len(losses)
+        var = sum((x - m) ** 2 for x in losses) / len(losses)
+        std = var ** 0.5
+        # normalize oscillation by (|mean|+1e-6) to be scale-aware
+        osc = std / (abs(m) + 1e-6)
+
+    prev_hps = state.get("prev_hps") or {}
+    cur_hps  = state.get("hps_used") or {}
+
+    lr_t  = (cur_hps.get("client") or {}).get("learning_rate")
+    lr_tm = (prev_hps.get("client") or {}).get("learning_rate")
+    b_t   = (cur_hps.get("client") or {}).get("batch_size")
+    b_tm  = (prev_hps.get("client") or {}).get("batch_size")
+
+    import math
+    hp_jump = 0.0
+    if lr_t and lr_tm and lr_t > 0 and lr_tm > 0:
+        hp_jump += abs(math.log(lr_t) - math.log(lr_tm))
+    if b_t and b_tm and b_tm > 0:
+        hp_jump += abs(b_t - b_tm) / b_tm
+
+    mu_used = float(state.get("mu_used") or 0.0)
+
+    # squash to [0,1]-ish
+    osc_norm = min(1.0, osc / 0.2)        # std equal to 20% of mean is “large”
+    hp_norm  = min(1.0, hp_jump / 1.0)
+    mu_norm  = min(1.0, mu_used / 0.1)
+
+    return (osc_norm + hp_norm + mu_norm) / 3.0
+
+
+def _instability_index_old_version(state: dict, W: int = 5) -> float:
     """Combine loss oscillation, HP jumps, and FedProx μ into one [0,1]-ish scalar."""
     losses = (state.get("recent_losses") or [])[-W:]
     osc = 0.0
@@ -22,10 +83,13 @@ def _instability_index(state: dict, W: int = 5) -> float:
 
     prev_hps = state.get("prev_hps") or {}
     cur_hps  = state.get("hps_used") or {}
-    lr_t  = (cur_hps.get("client") or {}).get("lr")
-    lr_tm = (prev_hps.get("client") or {}).get("lr")
+
+    lr_t  = (cur_hps.get("client") or {}).get("learning_rate")
+    lr_tm = (prev_hps.get("client") or {}).get("learning_rate")
+
     b_t   = (cur_hps.get("client") or {}).get("batch_size")
     b_tm  = (prev_hps.get("client") or {}).get("batch_size")
+
 
     import math
     hp_jump = 0.0
@@ -44,7 +108,53 @@ def _instability_index(state: dict, W: int = 5) -> float:
     return (osc_norm + hp_norm + mu_norm) / 3.0
 
 
-def _lyapunov_pass(state: dict, beta: float = 1.0, eps: float = 1e-3, W: int = 5) -> bool:
+def _lyapunov_pass(state: dict, beta: float = 0.3, base_eps: float = 5e-3, W: int = 5) -> bool:
+    """
+    V = EMA(loss) + β·oscillation; accept if ΔV <= ε_rel.
+    ε_rel adapts to noise level (recent std) so early noise doesn't block.
+    Also: warmup guard + fast-pass if accuracy improved.
+    """
+    losses = (state.get("recent_losses") or [])[-W:]
+    accs   = (state.get("recent_accs") or [])[-2:]
+
+    # --- Warmup: don't block with tiny history ---
+    if len(losses) < 3:
+        return True
+
+    # --- Fast pass if accuracy improved ---
+    if len(accs) == 2 and (accs[-1] - accs[-2]) > 0:
+        return True
+
+    # EMA
+    alpha = 0.4  # smoother than 0.6
+    ema = 0.0
+    for x in losses:
+        ema = alpha * x + (1 - alpha) * ema
+
+    # oscillation & std
+    m   = sum(losses) / len(losses)
+    var = sum((x - m) ** 2 for x in losses) / len(losses)
+    std = var ** 0.5
+
+    Vt = ema + beta * var
+
+    # crude one-step lookahead = current trend
+    d_last = losses[-1] - losses[-2]
+    ema_next = alpha * (losses[-1] + d_last) + (1 - alpha) * ema
+    Vnext = ema_next + beta * var  # keep same var for a 1-step lookahead
+
+    dV = Vnext - Vt
+
+    # --- Relative tolerance: scale epsilon by noise level ---
+    eps = base_eps + 0.25 * std   # tolerate more when stream is noisy
+
+    # Optional: print debug once in a while
+    print(f"[Lyapunov] Vt={Vt:.4f} Vnext={Vnext:.4f} dV={dV:.4f} std={std:.4f} eps={eps:.4f}")
+
+    return dV <= eps
+
+
+def _lyapunov_pass_more_strict(state: dict, beta: float = 1.0, eps: float = 1e-3, W: int = 5) -> bool:
     """V = EMA(loss) + β·oscillation; accept if ΔV <= ε (simple local lookahead)."""
     losses = (state.get("recent_losses") or [])[-W:]
     if not losses:
@@ -106,6 +216,12 @@ analyzer_agent = AnalyzerAgent()
 
 def analyze_node(state: HPOState) -> HPOState:
     print(f">>> Graph Node: ANALYZE for Client {state['client_id']}")
+
+    if _is_final_round(state) or state.get("phase") == "finalize":
+        print(f"[TRACE][GRAPH][finalize] ANALYZE skipped (final round) for client {state['client_id']}")
+        return state
+    
+
     start_time = time.time()
     new_search_space, reasoning, usage = analyzer_agent.analyze(
         client_id=state['client_id'],
@@ -138,6 +254,14 @@ def analyze_node(state: HPOState) -> HPOState:
 def suggest_node(state: HPOState) -> HPOState:
     print(f"\n>>> Graph Node: SUGGEST for Client {state['client_id']}")
 
+
+    if _is_final_round(state) or state.get("phase") == "finalize":
+        print(f"[TRACE][GRAPH][finalize] SUGGEST skipped (final round) for client {state['client_id']}")
+        if "hps" not in state or not state["hps"]:
+            state["hps"] = state.get("current_hps", state.get("hps", {}))
+        state['llm_suggestion_latency'] = 0.0
+        return state
+
     # 1) GUARD FIRST — skip duplicates before spending an LLM call
     if not shared_state.mark_suggest_once(state['client_id'], state['global_epoch'], "post_analyze"):
         print(f"[SKIP] Duplicate post_analyze SUGGEST for client {state['client_id']} epoch {state['global_epoch']}")
@@ -160,7 +284,7 @@ def suggest_node(state: HPOState) -> HPOState:
     acc_hist = (state.get("recent_accs") or [])[-2:]
     delta_acc = (acc_hist[-1] - acc_hist[-2]) if len(acc_hist) == 2 else 0.0
 
-    lam = float(state.get("lambda_penalty", 0.5))  # optional: from config/state
+    lam = float(state.get("lambda_penalty", 0.3))  # optional: from config/state
     instability = _instability_index(state)
     reward = float(delta_acc - lam * instability)
     state["reward"] = reward
@@ -168,10 +292,11 @@ def suggest_node(state: HPOState) -> HPOState:
     # Lyapunov gate
     state["lyapunov_pass"] = _lyapunov_pass(state)
 
-    #New: pass feedback to HPAgent
-    hp_agent.attach_feedback(
-        reward = state["reward"],
-        lyapunov_pass = state["lyapunov_pass"], 
+    # New: pass feedback to the shared mailbox (consumed in HPAgent.suggest)
+    shared_state.attach_feedback(
+        state['client_id'],
+        reward=state['reward'],
+        lyapunov_pass=state['lyapunov_pass'],
     )
 
 

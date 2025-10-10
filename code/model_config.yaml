@@ -26,8 +26,8 @@ imbalance_ratio: 1.0
 
 # Fractions of training and testing data to use.
 # 1.0 means using the full dataset.
-train_sample_fraction: 0.1
-test_sample_fraction: 0.1
+train_sample_fraction: 1.0
+test_sample_fraction: 1.0
 
 # Minimum number of samples each client must have.
 # Prevents clients from having too few data points in federated settings.
@@ -48,15 +48,15 @@ num_clusters: 3
 #   - FEMNIST        : 3550 (use fractions for scaling, e.g., 0.003)
 #   - Shakespeare    : 1129
 #   - PACS           : 4
-num_clients: 7
+num_clients: 10
 
 # Number of global communication rounds (epochs).
 # Each round consists of multiple local updates and aggregation.
-global_epochs: 10
+global_epochs: 3
 
 # Fraction of clients selected per round for training.
 # E.g., 0.3 means 30% of total clients participate each round.
-frac: 1.0
+frac: 0.5
 
 # Federated learning mode.
 # Options:
