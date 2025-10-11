@@ -129,11 +129,13 @@ class AgentStrategy(HPOStrategy):
         # 1) Prefer HPs prepared by the workflow for THIS epoch
         mailbox_hps = shared_state.get_and_pop_next_hps(client_id, this_epoch)
         if mailbox_hps is not None:
+            print(f"[STRAT][cid={client_id} ep={this_epoch}] USING MAILBOX HPs (from workflow)")
             hps = mailbox_hps
             current_state['concrete_hps'] = hps
 
         # 2) Else, reuse any concrete HPs we already have
         elif current_state.get('concrete_hps'):
+            print(f"[STRAT][cid={client_id} ep={this_epoch}] REUSING PREVIOUS HPs (no mailbox yet)")
             hps = current_state['concrete_hps']
 
         # 3) Else, first-ever time for this client: call "initial" ONCE
@@ -141,10 +143,12 @@ class AgentStrategy(HPOStrategy):
             # Guard against accidental double initial in the same epoch
             if not shared_state.mark_suggest_once(client_id, this_epoch, "initial"):
                 print(f"[SKIP] Duplicate initial SUGGEST for client {client_id} epoch {this_epoch}")
+                print(f"[STRAT][cid={client_id} ep={this_epoch}] SKIP duplicate initial; using defaults")
                 hps = current_state.get('concrete_hps', self._get_initial_hps(self.client_states[client_id]['search_space']))
             else:
+                print(f"[STRAT][cid={client_id} ep={this_epoch}] COLD-START: calling HPAgent once")
                 hps = self._get_reasoned_initial_hps(context)
-                current_state['concrete_hps'] = hps
+            current_state['concrete_hps'] = hps
 
 
 

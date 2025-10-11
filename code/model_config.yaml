@@ -1,3 +1,33 @@
+
+experiment:
+  seed: 2025
+
+lora:
+  enabled: true                # turn LoRA on/off
+  scope: "per_cluster"         # "single" | "per_cluster" | "per_client"
+  r: 8
+  alpha: 32
+  dropout: 0.05
+  step_lr: 5e-5                # LoRA adapter optimizer LR
+  every_k_rounds: 1            # update LoRA adapters every K rounds
+
+stability:
+    # SUGGEST pre-gate (happens BEFORE any HP agent LLM call)
+    pre_gate:
+      min_round_gap: 1          # minimum rounds between *successful* HP updates for a client
+      min_delta: 0.0            # require |Δacc| ≥ this to call HP agent (e.g., 0.002)
+      require_lyapunov: false   # if true, Lyapunov must pass to allow HP call
+
+    # Lyapunov parameters (used by workflow._lyapunov_pass)
+    lyapunov:
+      beta: 0.3
+      base_eps: 0.005
+      window: 5
+
+agents:
+  slm_model: "Qwen/Qwen2.5-0.5B-Instruct"
+
+
 # ============================================
 # Model and Dataset Configuration
 # ============================================
@@ -26,8 +56,8 @@ imbalance_ratio: 1.0
 
 # Fractions of training and testing data to use.
 # 1.0 means using the full dataset.
-train_sample_fraction: 1.0
-test_sample_fraction: 1.0
+train_sample_fraction: 0.1
+test_sample_fraction: 0.1
 
 # Minimum number of samples each client must have.
 # Prevents clients from having too few data points in federated settings.
@@ -48,7 +78,7 @@ num_clusters: 3
 #   - FEMNIST        : 3550 (use fractions for scaling, e.g., 0.003)
 #   - Shakespeare    : 1129
 #   - PACS           : 4
-num_clients: 10
+num_clients: 4
 
 # Number of global communication rounds (epochs).
 # Each round consists of multiple local updates and aggregation.

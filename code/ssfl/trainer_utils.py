@@ -5,6 +5,7 @@ from ssfl.aggregation import FedAvg, combine_client_server_models
 from ssfl.model_splitter import create_split_model, get_total_layers, create_global_model
 from ssfl.resource_profiler import profile_resources
 from ssfl.utils import calculate_accuracy, save_model
+from ssfl.utils_seed import seed_everything
 import numpy as np
 import random
 from torch.utils.data import ConcatDataset, DataLoader
@@ -160,6 +161,7 @@ def train_single_client(model_name, num_classes, arc_cfg, global_model,
     Trains a single client model. Adapts based on 'splitfed' or 'centralized' mode.
     Handles both image (tuple) and text (dict) data formats.
     """
+    seed_everything(seed=cid)
     results = {'train_loss': [],'test_loss': [], 'test_acc': [], 'train_acc': []}
 
     if fl_mode == "splitfed":

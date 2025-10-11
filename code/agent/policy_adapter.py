@@ -266,3 +266,53 @@ def policy_update(*, prompt: str, response: str, reward: float, lyapunov_pass: b
     info.update({"updated": True, "reason": "ok"})
     return info
 
+# --- HPO call-gating (separate from adapter update frequency) ---
+
+# Keep a separate counter namespace so we don't collide with adapter rounds
+_hpo_last_update_round: Dict[Any, int] = {}
+
+def should_update_hps_for_client(
+    *,
+    client_id: int,
+    round_idx: int,
+    delta_acc: float,
+    lyapunov_pass: bool,
+    min_round_gap: int = 1,
+    min_delta: float = 0.0,
+    require_lyapunov: bool = False,
+) -> bool:
+    """
+    Centralized policy: decide whether we should call the HP agent at all.
+    This is independent from LoRA adapter update frequency (every_k_rounds).
+
+    - min_round_gap: minimum rounds between *successful* HP updates for this client
+    - min_delta: require |Δacc| >= min_delta to consider an update
+    - require_lyapunov: if True, only allow when lyapunov_pass is True
+    """
+    last = _hpo_last_update_round.get(client_id, -10**9)
+
+    # 1) frequency gate
+    if (round_idx - last) < int(min_round_gap):
+        print(f"[HPO-GATE] freq-block: cid={client_id} round={round_idx} last={last} gap={min_round_gap}")
+        return False
+
+    # 2) improvement gate
+    if abs(float(delta_acc)) < float(min_delta):
+        print(f"[HPO-GATE] delta-block: cid={client_id} |Δacc|={abs(delta_acc):.4f} < {min_delta}")
+        return False
+
+    # 3) stability gate
+    if require_lyapunov and not bool(lyapunov_pass):
+        print(f"[HPO-GATE] lyapunov-block: cid={client_id} pass={lyapunov_pass}")
+        return False
+
+    return True
+
+
+def mark_hpo_updated(client_id: int, round_idx: int) -> None:
+    """
+    Record that we actually committed new HPs for this client at this round.
+    Used by the workflow after a successful suggestion is written.
+    """
+    _hpo_last_update_round[client_id] = int(round_idx)
+
