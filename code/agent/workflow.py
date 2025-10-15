@@ -226,6 +226,122 @@ def analyze_node(state: HPOState) -> HPOState:
 def suggest_node(state: HPOState) -> HPOState:
     print(f"\n>>> Graph Node: SUGGEST for Client {state['client_id']}")
 
+    # Final round / finalize phase: never call LLM
+    if _is_final_round(state) or state.get("phase") == "finalize":
+        print(f"[TRACE][GRAPH][finalize] SUGGEST skipped (final round) for client {state['client_id']}")
+        if "hps" not in state or not state["hps"]:
+            state["hps"] = state.get("current_hps", state.get("hps", {}))
+        state['llm_suggestion_latency'] = 0.0
+        return state
+
+    # Guard duplicate post_analyze suggest within the same (client,epoch)
+    if not shared_state.mark_suggest_once(state['client_id'], state['global_epoch'], "post_analyze"):
+        print(f"[SKIP] Duplicate post_analyze SUGGEST for client {state['client_id']} epoch {state['global_epoch']}")
+        return state
+
+    # Pull freshest per-client metrics published by strategies
+    try:
+        from agent import shared_state as _ss
+        cm = getattr(_ss, "CLIENT_METRICS", {}).get(state["client_id"])
+        if cm:
+            state.setdefault("recent_accs", cm.get("recent_accs", state.get("recent_accs", [])))
+            state.setdefault("recent_losses", cm.get("recent_losses", state.get("recent_losses", [])))
+            state.setdefault("hps_used", cm.get("hps_used", state.get("hps_used", {})))
+            state.setdefault("prev_hps", cm.get("prev_hps", state.get("prev_hps", {})))
+            state.setdefault("mu_used", cm.get("mu_used", state.get("mu_used", 0.0)))
+    except Exception:
+        pass
+
+    # === Compute reward & stability (unchanged reward; Lyapunov now uses YAML) ===
+    acc_hist = (state.get("recent_accs") or [])[-2:]
+    delta_acc = (acc_hist[-1] - acc_hist[-2]) if len(acc_hist) == 2 else 0.0
+
+    reward_cfg = shared_state.CONFIG.get("stability", {}).get("reward", {})
+    lam = float(reward_cfg.get("lambda_penalty", 0.3))
+
+    #lam = float(state.get("lambda_penalty", 0.3))
+    instability = _instability_index(state)
+    reward = float(delta_acc - lam * instability)
+    # optional scaling knob (kept separate from formula)
+    reward *= float(reward_cfg.get("scale", 1.0))
+    state["reward"] = reward
+
+
+
+    # --- NEW: read stability config from YAML and run Lyapunov with those params
+    stab = shared_state.CONFIG.get("stability", {})
+    pre  = stab.get("pre_gate", {})
+    lya  = stab.get("lyapunov", {})
+
+    state["lyapunov_pass"] = _lyapunov_pass(
+        state,
+        beta=float(lya.get("beta", 0.3)),
+        base_eps=float(lya.get("base_eps", 5e-3)),
+        W=int(lya.get("window", 5)),
+    )
+
+    # Feedback to mailbox (consumed in HPAgent.suggest for tiny LoRA update)
+    shared_state.attach_feedback(
+        state['client_id'],
+        reward=state['reward'],
+        lyapunov_pass=state['lyapunov_pass'],
+    )
+
+    # --- NEW: PRE-GATE BEFORE ANY LLM CALL ---
+    if not should_update_hps_for_client(
+        client_id=state['client_id'],
+        round_idx=int(state['global_epoch']),
+        delta_acc=float(delta_acc),
+        lyapunov_pass=bool(state["lyapunov_pass"]),
+        min_round_gap=int(pre.get("min_round_gap", 1)),
+        min_delta=float(pre.get("min_delta", 0.0)),
+        require_lyapunov=bool(pre.get("require_lyapunov", False)),
+    ):
+        print(f"[SUGGEST] skip LLM: pre-gate false (cid={state['client_id']}, epoch={state['global_epoch']})")
+        # keep HPs unchanged for next epoch
+        if "hps" not in state or not state["hps"]:
+            state["hps"] = state.get("current_hps", state.get("hps", {}))
+        next_epoch = state['global_epoch'] + 1
+        shared_state.set_next_hps(state['client_id'], next_epoch, state["hps"])
+        state['llm_suggestion_latency'] = 0.0
+        return state
+
+    # === Passed pre-gate → single-shot HP suggest ===
+    start_time = time.time()
+    hps, usage = hp_agent.suggest(
+        client_id=state['client_id'],
+        cluster_id=state['cluster_id'],
+        model_name=state['model_name'],
+        dataset_name=state['dataset_name'],
+        hpo_report=state['hpo_report'],
+        search_space=state['search_space'],
+        analysis_from_last_round=state.get('last_analysis'),
+        peer_history=state.get('peer_history')
+    )
+    end_time = time.time()
+    suggestion_latency = end_time - start_time
+    print(f"  ... LLM response received. HP Suggestion Latency: {suggestion_latency:.2f} seconds.")
+
+    # Save HPs and publish for next epoch
+    state['hps'] = hps
+    next_epoch = state['global_epoch'] + 1
+    shared_state.set_next_hps(state['client_id'], next_epoch, hps)
+
+    state['llm_suggestion_latency'] = suggestion_latency
+    state["last_prompt"] = getattr(hp_agent, "last_prompt", state.get("last_prompt", ""))
+    state["last_response"] = getattr(hp_agent, "last_response", state.get("last_response", ""))
+    state['suggestion_prompt_tokens'] = usage.get('prompt_tokens', 0)
+    state['suggestion_completion_tokens'] = usage.get('completion_tokens', 0)
+
+    # --- NEW: remember that we actually updated HPs this round ---
+    mark_hpo_updated(state['client_id'], int(state['global_epoch']))
+
+    return state
+
+
+def suggest_node_old(state: HPOState) -> HPOState:
+    print(f"\n>>> Graph Node: SUGGEST for Client {state['client_id']}")
+
 
     if _is_final_round(state) or state.get("phase") == "finalize":
         print(f"[TRACE][GRAPH][finalize] SUGGEST skipped (final round) for client {state['client_id']}")

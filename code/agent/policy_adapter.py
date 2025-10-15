@@ -17,6 +17,7 @@ _adapters: Dict[Any, bool] = {}   # existence map
 @dataclass
 class Cfg:
     enabled: bool = True
+    adapter_mode: str = "per_cluster"
     lora_r: int = 4
     lora_alpha: int = 16
     lora_dropout: float = 0.05
@@ -46,13 +47,30 @@ ANTI_STALE_HINT_LOCAL = (
 
 def init_adapter_runtime(base_model, tok, cfg: dict):
     """
-    Wrap the frozen base with PEFT once.
-    New adapters are created lazily per cluster via set_active_adapter_key(key).
+    Initialize the adaptation runtime.
+
+    - If cfg.enabled == False (aka use_lora: false), run the frozen base model.
+    - If enabled == True, try to wrap the base with PEFT LoRA once.
+      Adapters are created lazily per key in set_active_adapter_key().
+    - adapter_mode ("per_cluster" | "single") is stored in _cfg and used by set_active_adapter_key().
     """
     global tokenizer, _base, _model, _cfg, _peft_ok
     tokenizer = tok
-    _base = base_model.eval()
-    _cfg = Cfg(**{**_cfg.__dict__, **cfg})
+    _base = base_model.eval() if base_model is not None else None
+    _cfg = Cfg(**{**_cfg.__dict__, **(cfg or {})})
+
+    if _base is None:
+        _model = None
+        _peft_ok = False
+        print("[Adapter] No base model -> adapters unavailable.")
+        return
+    
+    # If adapters are disabled, just run the frozen base
+    if not _cfg.enabled:
+        _model = _base
+        _peft_ok = False
+        print("[Adapter] Adapters disabled -> running frozen base.")
+        return
 
     try:
         from peft import get_peft_model, LoraConfig, TaskType
@@ -60,13 +78,15 @@ def init_adapter_runtime(base_model, tok, cfg: dict):
         lcfg = LoraConfig(task_type=TaskType.CAUSAL_LM,
                           r=_cfg.lora_r, lora_alpha=_cfg.lora_alpha, lora_dropout=_cfg.lora_dropout)
         _model = get_peft_model(_base, lcfg)             # creates an initial adapter ("default")
+
         # Freeze everything by default (we’ll enable only the active adapter’s params)
         for n, p in _model.named_parameters():
             if "lora_" not in n:
                 p.requires_grad = False
         _model.eval()
         _peft_ok = True
-        print("[Adapter] PEFT ready (multi-adapter capable).")
+        print(f"[Adapter] PEFT ready (adapter capable). mode={_cfg.adapter_mode}")
+
     except Exception as e:
         _model = _base
         _peft_ok = False
@@ -145,15 +165,30 @@ def _set_trainable_for_adapter(key: Any):
 
 def set_active_adapter_key(key: Any):
     """
-    Public API: activate (and if needed, create) the adapter for this cluster key.
+    Public API: activate (and if needed, create) the adapter for this key.
+    Honors config:
+      - _cfg.enabled (aka use_lora)
+      - _cfg.adapter_mode: "per_cluster" | "single"
     """
     global _active_key
-    if not _peft_ok:
+
+    # If LoRA is disabled or PEFT isn't available, run frozen base (no-op)
+    if not getattr(_cfg, "enabled", True) or not _peft_ok or _model is None:
         _active_key = None
         return
-    _ensure_adapter_for_key(key)
-    _set_trainable_for_adapter(key)
-    _active_key = key
+
+    # Collapse to a single shared adapter when requested
+    actual_key = "global" if getattr(_cfg, "adapter_mode", "per_cluster") == "single" else key
+
+    # Fast path: already active
+    if _active_key == actual_key:
+        return
+
+    # Ensure the adapter exists and is the only trainable one
+    _ensure_adapter_for_key(actual_key)
+    _set_trainable_for_adapter(actual_key)
+    _active_key = actual_key
+
 
 def _build_chat_io(prompt: str, response: Optional[str] = None):
     """
@@ -315,4 +350,3 @@ def mark_hpo_updated(client_id: int, round_idx: int) -> None:
     Used by the workflow after a successful suggestion is written.
     """
     _hpo_last_update_round[client_id] = int(round_idx)
-

@@ -2,27 +2,43 @@
 experiment:
   seed: 2025
 
-lora:
-  enabled: true                # turn LoRA on/off
-  scope: "per_cluster"         # "single" | "per_cluster" | "per_client"
-  r: 8
-  alpha: 32
-  dropout: 0.05
-  step_lr: 5e-5                # LoRA adapter optimizer LR
-  every_k_rounds: 1            # update LoRA adapters every K rounds
+model:
+  use_lora: true              # true = enable LoRA; false = run frozen base (no adapter training)
+  adapter_mode: per_cluster   # per_cluster | single
+  lora:
+    r: 4
+    alpha: 16
+    dropout: 0.05
+    step_lr: 5e-5
+    max_grad_norm: 1.0
+    kl_max: 0.05
+    every_k_rounds: 3         # LoRA update frequency (policy_adapter.policy_update gate)
 
 stability:
-    # SUGGEST pre-gate (happens BEFORE any HP agent LLM call)
-    pre_gate:
-      min_round_gap: 1          # minimum rounds between *successful* HP updates for a client
-      min_delta: 0.0            # require |Δacc| ≥ this to call HP agent (e.g., 0.002)
-      require_lyapunov: false   # if true, Lyapunov must pass to allow HP call
 
-    # Lyapunov parameters (used by workflow._lyapunov_pass)
-    lyapunov:
-      beta: 0.3
-      base_eps: 0.005
-      window: 5
+  reward:
+    lambda_penalty: 0.3   # weight on instability in reward = Δacc - λ * instability
+    scale: 1.0            # optional: multiply reward before sending to LoRA
+
+  # SUGGEST pre-gate (happens BEFORE any HP agent LLM call)
+  pre_gate:
+    min_round_gap: 0          # minimum rounds between *successful* HP updates for a client
+    min_delta: 0.002            # require |Δacc| ≥ this to call HP agent (e.g., 0.002)
+    require_lyapunov: true   # if true, Lyapunov must pass to allow HP call
+
+  # Lyapunov parameters (used by workflow._lyapunov_pass)
+  lyapunov:
+    #Higher beta (0.5–1.0) penalizes jitter more → harder to pass (fewer updates).
+    #Lower beta (0.1–0.3) is more forgiving to noise → easier to pass.
+    beta: 0.3
+    # Epsilon controls sensitivity to small accuracy changes.
+    # Smaller eps (0.001–0.005) makes Lyapunov more sensitive to small changes.
+    # Larger eps (0.01–0.05) makes it less sensitive.
+    base_eps: 0.005
+    # How many recent training losses to consider for EMA and variance
+    #Larger window (6–10) smooths more, reacts slower but more stable.
+    #Smaller window (3–4) reacts faster but is noisier.
+    window: 2
 
 agents:
   slm_model: "Qwen/Qwen2.5-0.5B-Instruct"
@@ -78,15 +94,15 @@ num_clusters: 3
 #   - FEMNIST        : 3550 (use fractions for scaling, e.g., 0.003)
 #   - Shakespeare    : 1129
 #   - PACS           : 4
-num_clients: 4
+num_clients: 3
 
 # Number of global communication rounds (epochs).
 # Each round consists of multiple local updates and aggregation.
-global_epochs: 3
+global_epochs: 20
 
 # Fraction of clients selected per round for training.
 # E.g., 0.3 means 30% of total clients participate each round.
-frac: 0.5
+frac: 1
 
 # Federated learning mode.
 # Options:
@@ -133,3 +149,7 @@ hpo_strategy:
   # If a client's accuracy hasn't improved for 'hpo_patience' rounds,
   # the agent stops optimizing that client to save computation.
   hpo_patience: 3
+
+# Logging json file to record HPO events and decisions.
+logging:
+  json_dir: "/u/aalasif/SLM_FL_HPO/code/agent/json_files"

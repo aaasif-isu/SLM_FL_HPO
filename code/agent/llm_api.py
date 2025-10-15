@@ -7,6 +7,7 @@ from typing import Tuple, Dict
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from . import shared_state  # we will read shared_state.CONFIG here
 
 # --- Adaptation runtime (lives in policy_adapter.py) ---
 from .policy_adapter import (
@@ -16,10 +17,13 @@ from .policy_adapter import (
     policy_update,            # re-exported for callers (e.g., hp_agent)
 )
 
+
+
 # ===================== Model Selection (unchanged) =====================
 
 # Choose your local instruct model
-model_id = "Qwen/Qwen2.5-0.5B-Instruct"
+model_id = shared_state.CONFIG.get("agents", {}).get("slm_model", "Qwen/Qwen2.5-0.5B-Instruct")
+#model_id = "Qwen/Qwen2.5-0.5B-Instruct"
 
 print(f"Loading local LLM: {model_id}...")
 
@@ -42,23 +46,25 @@ try:
         trust_remote_code=True,
     ).eval()
 
-    # Initialize the adaptation runtime (LoRA etc.) around the frozen base.
-    # These knobs are safe defaults; you can later expose them via your config.
-    init_adapter_runtime(
-        base_model=_base_model,
-        tok=tokenizer,
-        cfg={
-            "enabled": True,
-            "lora_r": 4,
-            "lora_alpha": 16,
-            "lora_dropout": 0.05,
-            "step_lr": 5e-5,
-            "max_grad_norm": 1.0,
-            "kl_max": 0.05,
-            "every_k_rounds": 3,   # update check each time feedback arrives
-        },
-    )
+    # ===== Build adapter cfg from YAML =====
+    m = shared_state.CONFIG.get("model", {})
+    l = m.get("lora", {}) or {}
+    adapter_cfg = {
+        "enabled": bool(m.get("use_lora", True)),                   # maps to use_lora
+        "adapter_mode": m.get("adapter_mode", "per_cluster"),       # "per_cluster" | "single"
+        "lora_r": int(l.get("r", 4)),
+        "lora_alpha": int(l.get("alpha", 16)),
+        "lora_dropout": float(l.get("dropout", 0.05)),
+        "step_lr": float(l.get("step_lr", 5e-5)),
+        "max_grad_norm": float(l.get("max_grad_norm", 1.0)),
+        "kl_max": float(l.get("kl_max", 0.05)),
+        "every_k_rounds": int(l.get("every_k_rounds", 3)),
+    }
+    print(f"[CFG] LoRA enabled={adapter_cfg['enabled']} mode={adapter_cfg['adapter_mode']}")
 
+
+    # Initialize the adaptation runtime (LoRA etc.) around the frozen base.
+    init_adapter_runtime(base_model=_base_model, tok=tokenizer, cfg=adapter_cfg)
     print("Model loaded successfully.")
 except Exception as e:
     print(f"Error loading model from Hugging Face: {e}")

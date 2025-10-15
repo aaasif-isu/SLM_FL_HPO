@@ -6,8 +6,12 @@ import sys
 import logging
 import threading # <-- 1. IMPORT THREADING
 import argparse
+import json
 
-# --- Your existing imports ---
+from ssfl.utils_seed import seed_everything
+from agent import shared_state
+
+
 from ssfl.utils import (
     load_dataset,
     partition_data_non_iid_random,
@@ -15,24 +19,12 @@ from ssfl.utils import (
     subsample_dataset,
     Tee
 )
-from ssfl.trainer import train_model
-
-# --- Imports for the new parallel workflow ---
-from agent.cpu_worker import background_cpu_work # <-- 2. IMPORT THE CPU WORKER
-from agent.shared_state import results_queue     # <-- 3. IMPORT THE SHARED QUEUE
-
-import json
-#from agent.shared_state import HP_AGENT_STATS, ANALYZER_AGENT_STATS, load_stats
-from agent.shared_state import aggregate_hp_events, aggregate_analyzer_events
-from agent.shared_state import reset_aggregates
-from ssfl.utils_seed import seed_everything
-
-
-reset_aggregates()
 
 def load_config(path="model_config.yaml"):
     with open(path, "r") as f:
         return yaml.safe_load(f)
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="Run a federated learning experiment.")
@@ -45,6 +37,10 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config)
+    shared_state.CONFIG = config
+
+    print("[CFG] Using config file:", args.config)
+    print("[CFG] Parsed model section:", json.dumps(config.get("model", {}), indent=2))
 
     # Initialize global seed
     if "experiment" in config and "seed" in config["experiment"]:
@@ -52,41 +48,15 @@ def main():
     else:
         seed_everything(42)  # default
 
-    # ==== Wire config into submodules ====
-    # 1) LoRA: enable/disable + scope + r/alpha/dropout/step_lr/every_k_rounds
-    try:
-        from agent import policy_adapter
-        policy_adapter.configure_from_dict(config.get("lora", {}))
-    except Exception as e:
-        print(f"[LoRA] Warning: could not configure policy_adapter: {e}")
+    from ssfl.trainer import train_model                      # deferred
+    from agent.cpu_worker import background_cpu_work          # deferred
+    from agent.shared_state import aggregate_hp_events, aggregate_analyzer_events, reset_aggregates, results_queue  # deferred if needed
+    from agent import llm_api  # optional explicit import; now it sees CONFIG
 
-    # 2) Stability gates: pre_gate + lyapunov thresholds
-    try:
-        from agent import analyzer_agent
-        analyzer_agent.configure_stability(config.get("stability", {}))
-    except Exception as e:
-        print(f"[Stability] Warning: could not configure analyzer_agent: {e}")
-
-    # 3) SLM/LLM model for HP agent
-    try:
-        from agent import llm_api
-        slm_name = (config.get("agents", {}).get("slm_model", "") or "").strip()
-        llm_api.configure_model(slm_name if slm_name else None)  # None => llm_api default
-    except Exception as e:
-        print(f"[SLM] Warning: could not configure llm_api: {e}")
-
-    # 4) (Optional) HPO strategy knobs if your strategies module needs them
-    try:
-        from ssfl import strategies
-        strategies.configure_hpo(config.get("hpo_strategy", {}))
-    except Exception as e:
-        print(f"[HPO] Note: strategies.configure_hpo skipped or failed: {e}")
-    # ============================================================
+    reset_aggregates()
 
 
-    #config = load_config()
-
-    # --- Logging Setup (remains the same) ---
+    # --- Logging Setup  ---
     log_dir = config.get("log_dir", "logs")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
@@ -96,7 +66,7 @@ def main():
     except Exception as e:
         print(f"Failed to redirect stdout: {e}")
 
-    # --- Data Loading and Partitioning (remains the same) ---
+    # --- Data Loading and Partitioning  ---
     train_dataset, test_dataset, num_classes, image_size, in_channels = load_dataset(config["dataset_name"])
     print(f"Dataset: {config['dataset_name'].upper()}")
     train_subset = subsample_dataset(train_dataset, config["train_sample_fraction"])
@@ -231,4 +201,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
