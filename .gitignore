@@ -6,6 +6,7 @@ __pycache__/
 *.pyd
 
 code/agents_v1/
+code/agent/json_files/
 
 code/agent/client_hpo_states.yaml
 # code/agent/hp_config.yaml
@@ -15,6 +16,7 @@ code/best_model/
 code/data/
 code/latest_model/
 code/models/
+code/experiment/
 
 code/sfl_agent_framework/
 code/SFL_cifar10_0.5/

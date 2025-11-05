@@ -6,7 +6,7 @@ import re
 from typing import Dict, Tuple, Any, Optional
 
 from .prompts import get_hp_suggestion_prompt
-from .llm_api import call_llm
+from .llm_api import call_llm, _first_json_object
 from .policy_adapter import policy_update, set_active_adapter_key
 
 from . import shared_state
@@ -179,6 +179,19 @@ class HPAgent:
         except Exception as e:
             print(f"[Adapter] WARNING: could not select adapter for cluster {cluster_id}: {e}")
 
+        # --- PROBE #1: confirm the activated adapter actually has trainable LoRA params ---
+        try:
+            from .policy_adapter import get_infer_model
+            _probe_model = get_infer_model()
+            _probe_key = str(cluster_id)
+            _probe_trainables = [n for n, p in _probe_model.named_parameters() if getattr(p, "requires_grad", False)]
+            print(f"[ADAPTER-CHECK] key={_probe_key} num_trainables={len(_probe_trainables)} sample={_probe_trainables[:4]}")
+        except Exception as _e:
+            print(f"[ADAPTER-CHECK] error: {type(_e).__name__}: {_e}")
+        # ----------------------------------------------------------------------
+
+        
+
         # Pull pending feedback + last prompt/response (for tiny on-the-fly LoRA update)
         fb = None
         try:
@@ -210,6 +223,12 @@ class HPAgent:
         if fb and last_prompt and last_response:
             try:
                 set_active_adapter_key(cluster_id)
+                # --- PROBE #2: log exactly what we’re about to update with ---
+                _used_last = getattr(shared_state, "get_flag", lambda *_a, **_k: True)(f"hp_committed_{client_id}", default=True)
+                print(f"[POLICY-UPDATE] key={str(cluster_id)} used_last={_used_last} "
+                    f"lyapunov_pass={bool(fb['lyapunov_pass'])} reward={float(fb['reward']):.4f}")
+                # -------------------------------------------------------------
+
                 _info = policy_update(
                     prompt=last_prompt,
                     response=last_response,
@@ -261,25 +280,41 @@ class HPAgent:
 
             # Try to parse the JSON once per attempt
             try:
-                cleaned = (response_json_str or "").strip()
-                if not cleaned:
+                raw_text = (response_json_str or "").strip()
+                if not raw_text:
                     raise ValueError("Empty response from LLM")
 
-                # strip markdown fences if present
-                if "```json" in cleaned:
-                    s = cleaned.find("```json") + 7
-                    e = cleaned.find("```", s)
-                    if e != -1:
-                        cleaned = cleaned[s:e].strip()
-                elif "```" in cleaned:
-                    s = cleaned.find("```") + 3
-                    e = cleaned.find("```", s)
-                    if e != -1:
-                        cleaned = cleaned[s:e].strip()
+                # ====================================================================
+                # >>> CRITICAL FIX: Robust JSON Extraction and Sanitization <<<
+                #
+                
+                # 1. Primary Attempt: Use the robust extractor to find the best balanced {...}
+                # This tackles unquoted keys/values and balanced bracket issues.
+                json_candidate = _first_json_object(raw_text) 
+                
+                if not json_candidate:
+                    # 2. Secondary Attempt (Fallback): Try simple markdown fence stripping
+                    #    This handles the most common LLM error: wrapping output in ```json...```
+                    cleaned_fences = raw_text
+                    if "```json" in cleaned_fences:
+                        s = cleaned_fences.find("```json") + 7
+                        e = cleaned_fences.find("```", s)
+                        if e != -1:
+                            json_candidate = cleaned_fences[s:e].strip()
+                    elif "```" in cleaned_fences:
+                        s = cleaned_fences.find("```") + 3
+                        e = cleaned_fences.find("```", s)
+                        if e != -1:
+                            json_candidate = cleaned_fences[s:e].strip()
+                
+                if not json_candidate:
+                    raise ValueError("Could not extract balanced JSON content from response.")
+                
+                # 3. Final sanitization: Remove control chars and assign to 'cleaned'
+                cleaned = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", json_candidate)
+                # ====================================================================
 
-                # strip control chars
-                cleaned = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", cleaned)
-
+            
                 # remember response for THIS client
                 self._last_response_by_client[client_id] = cleaned
                 try:
@@ -294,6 +329,7 @@ class HPAgent:
 
                 data = json.loads(cleaned)
                 suggested_hps = data.get("hps", {})
+
                 if not isinstance(suggested_hps, dict) or not suggested_hps:
                     raise ValueError("Response 'hps' key is not a valid, non-empty dictionary.")
 
@@ -354,6 +390,34 @@ class HPAgent:
         shared_state.save_stats("hp", self.get_stats())
 
         return final_hps, token_usage
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

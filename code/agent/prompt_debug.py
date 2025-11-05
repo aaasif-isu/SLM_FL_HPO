@@ -1,6 +1,5 @@
 # code/agent/prompts.py
 
-
 import json
 
 # --- NEW: Helper function to provide context about cluster capacity ---
@@ -48,7 +47,8 @@ def get_hp_suggestion_prompt(
     # Build history string (existing logic)
     history_lines = []
     if hpo_report:
-        for epoch, report in sorted(hpo_report.items()):
+        # --- MODIFICATION: Limit history to the last 3 rounds to reduce token count ---
+        for epoch, report in sorted(hpo_report.items())[-3:]:
             hps_str = ", ".join(f"{k}={v}" for k, v in report.get('hps_suggested', {}).items())
             acc = report.get('final_test_accuracy', 0.0)
             history_lines.append(f"- In Epoch {epoch + 1}: Used HPs ({hps_str}) and achieved Test Accuracy = {acc:.2f}%")
@@ -63,6 +63,7 @@ def get_hp_suggestion_prompt(
     peer_history_str = "No peers in this cluster have run yet in this epoch."
     if peer_history:
         peer_lines = []
+        # NOTE: Peer history should be limited externally before this function is called if necessary
         for peer_run in peer_history:
             hps_str = ", ".join(f"{k}={v}" for k, v in peer_run.get('hps_used', {}).items())
             peer_lines.append(f"- Client {peer_run['client_id']} used HPs ({hps_str}) --> {peer_run['result_and_decision']}")
@@ -92,7 +93,8 @@ def get_hp_suggestion_prompt(
 
     # Create example with ACTUAL values from search space
     example_hps_dict = {
-        "reasoning": "A detailed, multi-part reason for all HP choices.",
+        # --- MODIFICATION: Enforce concise reasoning in the example output ---
+        "reasoning": "Increase LR because both accuracies are low; decrease WD slightly to compensate.",
         "hps": {
             "client": {
                 "learning_rate": search_space.get('client_hps', {}).get('learning_rate', {}).get('initial', 0.001),
@@ -144,7 +146,7 @@ You are an expert ML engineer and strategist. Your task is to act as a methodica
 1.  **Analyze the Task:** First, identify the task (`{task_description}`). Your strategy for text prediction should be different from image classification.
 2.  **Review History:** Examine the client's own history and peer history. Is there a pattern? Are high learning rates consistently failing? Is dropout helping?
 3.  **Consult Guidance:** Read the expert guidance below and prioritize your choices based on it.
-4.  **Formulate Reasoning:** In the "reasoning" key, explain *why* you are choosing each value, referencing the history and guidance. For example: "The test accuracy (45%) is much lower than the train accuracy (70%), indicating overfitting. As per the guidance, I will increase the dropout_rate to 0.4 and suggest a more conservative learning_rate."
+4.  **Formulate Reasoning:** In the "reasoning" key, explain *why* you are choosing each value, referencing the history and guidance. **Keep this explanation concise, ideally one or two sentences.** For example: "The test accuracy (45%) is much lower than the train accuracy (70%), indicating overfitting. As per the guidance, I will increase the dropout_rate to 0.4 and suggest a more conservative learning_rate."
 5.  **Construct Output:** Provide a single, valid JSON object according to the format, ensuring all values adhere to the STRICT CONSTRAINTS.
 
 
@@ -196,6 +198,7 @@ FINAL INSTRUCTION:
 -Do not include any explanations outside the JSON.
 -Do not use Markdown or code fences.
 -Do not include any introductory or concluding text.
+-**Keep the reasoning section brief.**
 
 **EXAMPLE OUTPUT (using actual constraint values):**
 {example_json_str}

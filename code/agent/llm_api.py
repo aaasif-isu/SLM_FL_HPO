@@ -1,86 +1,52 @@
 # code/agent/llm_api.py
-
+import os
 import time
 import json
-import re
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Optional
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from . import shared_state  # we will read shared_state.CONFIG here
+from dotenv import load_dotenv
+import requests
 
-# --- Adaptation runtime (lives in policy_adapter.py) ---
+from . import shared_state  # reads shared_state.CONFIG
+
+# --- Adapter runtime (unchanged API) ---
 from .policy_adapter import (
     init_adapter_runtime,
     get_infer_model,
-    set_active_adapter_key,   # re-exported for callers (e.g., hp_agent)
-    policy_update,            # re-exported for callers (e.g., hp_agent)
+    set_active_adapter_key,   # re-exported
+    policy_update,            # re-exported
 )
 
+# ===================== Config & ENV =====================
 
+load_dotenv()
 
-# ===================== Model Selection (unchanged) =====================
+CFG = shared_state.CONFIG or {}
 
-# Choose your local instruct model
-model_id = shared_state.CONFIG.get("agents", {}).get("slm_model", "Qwen/Qwen2.5-0.5B-Instruct")
-#model_id = "Qwen/Qwen2.5-0.5B-Instruct"
+# Backends: "local" | "openrouter" | "auto"
+BACKEND = (CFG.get("agents", {}).get("backend") or "local").lower().strip()
+SLM_MODEL_ID = CFG.get("agents", {}).get("slm_model", "Qwen/Qwen2.5-0.5B-Instruct")
+API_MODEL_ID = CFG.get("agents", {}).get("api_model", "openai/gpt-4o-mini")
 
-print(f"Loading local LLM: {model_id}...")
+# If False (default), we will NOT run local model on CPU.
+# In auto mode, this forces fallback to API when no CUDA.
+LOCAL_ALLOW_CPU = bool(CFG.get("agents", {}).get("local_allow_cpu", False))
 
-# Expose tokenizer at module scope (policy_adapter references it for sanity checks)
-tokenizer = None
-_base_model = None  # frozen base; policy_adapter will wrap it for LoRA if available
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_SITE    = os.getenv("OPENROUTER_SITE", "http://localhost:3000")
+OPENROUTER_APP     = os.getenv("OPENROUTER_APP", "FedHPO")
 
-def _safe_set_pad(tok: AutoTokenizer):
-    if tok.pad_token_id is None:
-        tok.pad_token = tok.eos_token
-
-# Try to load tokenizer and model (same behavior you had)
-try:
-    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-    _safe_set_pad(tokenizer)
-
-    _base_model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        device_map="auto",
-        trust_remote_code=True,
-    ).eval()
-
-    # ===== Build adapter cfg from YAML =====
-    m = shared_state.CONFIG.get("model", {})
-    l = m.get("lora", {}) or {}
-    adapter_cfg = {
-        "enabled": bool(m.get("use_lora", True)),                   # maps to use_lora
-        "adapter_mode": m.get("adapter_mode", "per_cluster"),       # "per_cluster" | "single"
-        "lora_r": int(l.get("r", 4)),
-        "lora_alpha": int(l.get("alpha", 16)),
-        "lora_dropout": float(l.get("dropout", 0.05)),
-        "step_lr": float(l.get("step_lr", 5e-5)),
-        "max_grad_norm": float(l.get("max_grad_norm", 1.0)),
-        "kl_max": float(l.get("kl_max", 0.05)),
-        "every_k_rounds": int(l.get("every_k_rounds", 3)),
-    }
-    print(f"[CFG] LoRA enabled={adapter_cfg['enabled']} mode={adapter_cfg['adapter_mode']}")
-
-
-    # Initialize the adaptation runtime (LoRA etc.) around the frozen base.
-    init_adapter_runtime(base_model=_base_model, tok=tokenizer, cfg=adapter_cfg)
-    print("Model loaded successfully.")
-except Exception as e:
-    print(f"Error loading model from Hugging Face: {e}")
-    print("This might be due to insufficient VRAM or a missing dependency.")
-    tokenizer = None
-    _base_model = None
-
-# ---------- helpers (no change to prompts.py needed) ----------
+# ===================== Prompts / Helpers (unchanged) =====================
 
 SYSTEM_JSON_ONLY = (
-    "You are a function that returns JSON only. "
-    "Output must be a single valid JSON object. "
-    "Do not include markdown, backticks, or any text outside JSON."
+    "You are a strict JSON generator. Return ONLY a single JSON object. "
+    "The ONLY keys allowed are 'reasoning', 'hps'. The 'hps' key MUST "
+    "contain 'client', 'server', and 'mu' dictionaries/values. "
+    "DO NOT use bullet points, hyphens, or lists within the JSON object. "
 )
 
-# Lightweight wrapper to discourage repeating the same HPs across rounds
 ANTI_STALE_HINT = (
     "Policy:\n"
     "- If this is NOT the first round and prior hyperparameters appear in the context/history, "
@@ -94,23 +60,14 @@ ANTI_STALE_HINT = (
 
 def _strip_code_fences(s: str) -> str:
     s = s.strip()
-    # Remove leading ```... and trailing ```
     if s.startswith("```"):
-        # drop the first line fence (may include language tag)
         first_newline = s.find("\n")
-        if first_newline != -1:
-            s = s[first_newline + 1 :]
-        else:
-            s = s[3:]
+        s = s[first_newline + 1 :] if first_newline != -1 else s[3:]
     if s.endswith("```"):
         s = s[:-3]
     return s.strip()
 
-def _first_json_object(s: str):
-    """
-    Return the first balanced {...} JSON object found in s.
-    Handles nested braces and ignores braces inside quoted strings.
-    """
+def _first_json_object(s: str) -> Optional[str]:
     start = -1
     depth = 0
     in_str = False
@@ -140,86 +97,215 @@ def _first_json_object(s: str):
     return None
 
 def _sanitize_to_json(text: str) -> str:
-    """
-    Trim Qwen terminators, strip code fences, then extract first JSON object.
-    If none is found, return the original trimmed text.
-    """
     s = text.strip()
-    # Trim at Qwen's chat terminator if present
-    s = s.split("<|im_end|>", 1)[0].strip()
+    s = s.split("<|im_end|>", 1)[0].strip()   # Qwen end marker, if present
     s = _strip_code_fences(s)
     obj = _first_json_object(s)
     return obj.strip() if obj else s
 
-# ---------- main call (UNCHANGED SIGNATURE) ----------
+def _safe_set_pad(tok: AutoTokenizer):
+    if tok.pad_token_id is None:
+        tok.pad_token = tok.eos_token
 
-def call_llm(prompt: str) -> Tuple[str, Dict]:
+# ===================== Local Model (Qwen) =====================
+
+_tokenizer: Optional[AutoTokenizer] = None
+_base_model = None
+_local_ready = False
+
+def _maybe_init_local() -> None:
     """
-    Calls the local Qwen Instruct model, enforcing JSON-only output via a system message.
-    Sanitizes the reply into a parseable JSON string.
-    Returns (json_like_text, usage_dict).
+    Lazily initialize local tokenizer/model + adapter runtime.
+    Respects LOCAL_ALLOW_CPU. If no CUDA and LOCAL_ALLOW_CPU=False, skip init.
     """
-    model = get_infer_model()
-    if model is None or tokenizer is None:
-        print("Model or tokenizer not loaded. Returning empty response.")
-        return "", {"prompt_tokens": 0, "completion_tokens": 0}
+    global _tokenizer, _base_model, _local_ready
+
+    if _local_ready:
+        return
+
+    cuda_ok = torch.cuda.is_available()
+    if not cuda_ok and not LOCAL_ALLOW_CPU:
+        print("[llm_api] CUDA not available and agents.local_allow_cpu=False; skipping local init.")
+        _tokenizer = None
+        _base_model = None
+        _local_ready = False
+        return
 
     try:
-        start_time = time.time()
+        print(f"[llm_api] Loading local LLM: {SLM_MODEL_ID} (device: {'cuda' if cuda_ok else 'cpu'}) ...")
+        tok = AutoTokenizer.from_pretrained(SLM_MODEL_ID, trust_remote_code=True)
+        _safe_set_pad(tok)
 
-        # Wrap your existing prompt with a small anti-stale hint (no change to prompts.py)
-        wrapped_prompt = ANTI_STALE_HINT + "\n\n" + prompt
-
-        messages = [
-            {"role": "system", "content": SYSTEM_JSON_ONLY + " Prefer adjustments over repetition. Never copy example values."},
-            {"role": "user", "content": wrapped_prompt},
-        ]
-
-        # Apply Qwen chat template
-        chat_text = tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
+        model = AutoModelForCausalLM.from_pretrained(
+            SLM_MODEL_ID,
+            device_map="auto" if cuda_ok else None,  # if cpu, keep None to .to('cpu') explicitly
+            trust_remote_code=True,
         )
 
-        # Tokenize with attention mask & padding
-        device = next(model.parameters()).device
-        model_inputs = tokenizer(
-            chat_text,
-            return_tensors="pt",
-            padding=True,
-            truncation=True
-        ).to(device)
+        if cuda_ok:
+            model = model.eval()  # on GPU via device_map=auto
+        else:
+            model = model.to("cpu").eval()
 
-        # Deterministic decoding (no unsupported flags like top_k)
-        gen_ids = model.generate(
-            **model_inputs,
-            max_new_tokens=512,
-            do_sample=False,           # deterministic
-            temperature=0.0,           # ignored when do_sample=False
-            top_p=1.0,                 # ignored when do_sample=False
-            eos_token_id=tokenizer.eos_token_id,
-            pad_token_id=tokenizer.pad_token_id,
-        )
-
-        # Slice only the newly generated portion, then decode
-        new_tokens = gen_ids[0, model_inputs.input_ids.shape[1]:]
-        raw_text = tokenizer.decode(new_tokens, skip_special_tokens=True)
-
-        # Trim at Qwen end marker and sanitize to first JSON object
-        cleaned = _sanitize_to_json(raw_text)
-
-        end_time = time.time()
-
-        usage = {
-            "prompt_tokens": int(model_inputs.input_ids.numel()),
-            "completion_tokens": int(new_tokens.numel()),
-            "total_tokens": int(gen_ids.numel()),
-            "latency_ms": (end_time - start_time) * 1000.0,
+        # Build adapter cfg from YAML
+        m = CFG.get("model", {})
+        l = m.get("lora", {}) or {}
+        adapter_cfg = {
+            "enabled": bool(m.get("use_lora", False)),
+            "adapter_mode": m.get("adapter_mode", "per_cluster"),   # "per_cluster" | "single"
+            "lora_r": int(l.get("r", 4)),
+            "lora_alpha": int(l.get("alpha", 4)),
+            "lora_dropout": float(l.get("dropout", 0.05)),
+            "step_lr": float(l.get("step_lr", 2e-5)),
+            "max_grad_norm": float(l.get("max_grad_norm", 0.5)),
+            "kl_max": float(l.get("kl_max", 0.01)),
+            "every_k_rounds": int(l.get("every_k_rounds", 3)),
         }
 
+        init_adapter_runtime(base_model=model, tok=tok, cfg=adapter_cfg)
+        _tokenizer = tok
+        _base_model = model
+        _local_ready = True
+        print(f"[llm_api] Local model ready. LoRA enabled={adapter_cfg['enabled']} mode={adapter_cfg['adapter_mode']}")
+    except Exception as e:
+        print(f"[llm_api] Local init failed: {e}")
+        _tokenizer = None
+        _base_model = None
+        _local_ready = False
+
+def _call_llm_local(prompt: str) -> Tuple[str, Dict]:
+    """
+    Use local Qwen model (and adapter runtime). Returns (json_text, usage).
+    If local not available (e.g., no CUDA and LOCAL_ALLOW_CPU=False), returns ("", usage).
+    """
+    _maybe_init_local()
+    model = get_infer_model()
+    tok = _tokenizer
+
+    if model is None or tok is None:
+        return "", {"prompt_tokens": 0, "completion_tokens": 0, "backend": "local_unavailable"}
+
+    try:
+        start = time.time()
+        messages = [
+            {"role": "system", "content": SYSTEM_JSON_ONLY + " Prefer adjustments over repetition. Never copy example values."},
+            {"role": "user", "content": ANTI_STALE_HINT + "\n\n" + prompt},
+        ]
+        chat_text = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+        device = next(model.parameters()).device
+        inputs = tok(chat_text, return_tensors="pt", padding=True, truncation=True).to(device)
+
+        gen_ids = model.generate(
+            **inputs,
+            max_new_tokens=512,
+            do_sample=False,
+            temperature=0.0,
+            top_p=1.0,
+            eos_token_id=tok.eos_token_id,
+            pad_token_id=tok.pad_token_id,
+        )
+        new_tokens = gen_ids[0, inputs.input_ids.shape[1]:]
+        raw_text = tok.decode(new_tokens, skip_special_tokens=True)
+        cleaned = _sanitize_to_json(raw_text)
+
+        end = time.time()
+        usage = {
+            "prompt_tokens": int(inputs.input_ids.numel()),
+            "completion_tokens": int(new_tokens.numel()),
+            "total_tokens": int(gen_ids.numel()),
+            "latency_ms": (end - start) * 1000.0,
+            "backend": "local",
+            "model": SLM_MODEL_ID,
+            "device": str(device),
+        }
         return cleaned, usage
 
     except Exception as e:
-        print(f"An unexpected error occurred during local inference: {e}")
-        return "", {"prompt_tokens": 0, "completion_tokens": 0}
+        print(f"[llm_api] Local inference error: {e}")
+        return "", {"prompt_tokens": 0, "completion_tokens": 0, "backend": "local_err", "model": SLM_MODEL_ID}
+
+# ===================== OpenRouter API =====================
+
+def _call_llm_openrouter(prompt: str) -> Tuple[str, Dict]:
+    """
+    Call OpenRouter API and return (json_text, usage).
+    """
+    if not OPENROUTER_API_KEY:
+        print("[llm_api] OPENROUTER_API_KEY not set.")
+        return "", {"prompt_tokens": 0, "completion_tokens": 0, "backend": "openrouter_unavailable"}
+
+    try:
+        start = time.time()
+        messages = [
+            {"role": "system", "content": SYSTEM_JSON_ONLY + " Prefer adjustments over repetition. Never copy example values."},
+            {"role": "user", "content": ANTI_STALE_HINT + "\n\n" + prompt},
+        ]
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "HTTP-Referer": OPENROUTER_SITE,
+            "X-Title": OPENROUTER_APP,
+            "Content-Type": "application/json",
+        }
+        data = {
+            "model": API_MODEL_ID,
+            "messages": messages,
+            "temperature": 0.0,
+            "top_p": 1.0,
+            "max_tokens": 512,
+        }
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            data=json.dumps(data),
+            timeout=60,
+        )
+        resp.raise_for_status()
+        j = resp.json()
+
+        content = j.get("choices", [{}])[0].get("message", {}).get("content", "") or ""
+        cleaned = _sanitize_to_json(content)
+
+        usage_api = j.get("usage", {}) or {}
+        end = time.time()
+        usage = {
+            "prompt_tokens": int(usage_api.get("prompt_tokens", 0)),
+            "completion_tokens": int(usage_api.get("completion_tokens", 0)),
+            "total_tokens": int(usage_api.get("total_tokens", usage_api.get("prompt_tokens", 0) + usage_api.get("completion_tokens", 0))),
+            "latency_ms": (end - start) * 1000.0,
+            "backend": "openrouter",
+            "model": API_MODEL_ID,
+        }
+        return cleaned, usage
+
+    except requests.exceptions.HTTPError as e:
+        print(f"[llm_api] OpenRouter HTTP error: {e} / {getattr(e, 'response', None)}")
+        return "", {"prompt_tokens": 0, "completion_tokens": 0, "backend": "openrouter_err", "model": API_MODEL_ID}
+    except Exception as e:
+        print(f"[llm_api] OpenRouter call failed: {e}")
+        return "", {"prompt_tokens": 0, "completion_tokens": 0, "backend": "openrouter_err", "model": API_MODEL_ID}
+
+# ===================== Public Router (unchanged signature) =====================
+
+def call_llm(prompt: str) -> Tuple[str, Dict]:
+    """
+    Public entrypoint (unchanged). Routes per config:
+      - backend=local:       use local Qwen
+      - backend=openrouter:  use OpenRouter API
+      - backend=auto:        prefer local; if unavailable or CPU-only (and not allowed), fall back to API
+    Returns (json_text, usage_dict).
+    """
+    backend = BACKEND
+    if backend == "local":
+        return _call_llm_local(prompt)
+
+    if backend == "openrouter":
+        return _call_llm_openrouter(prompt)
+
+    # auto
+    txt, usage = _call_llm_local(prompt)
+    if txt:
+        return txt, usage
+
+    print("[llm_api] Falling back to OpenRouter (auto mode).")
+    return _call_llm_openrouter(prompt)

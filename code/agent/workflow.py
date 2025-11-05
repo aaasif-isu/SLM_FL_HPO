@@ -12,7 +12,11 @@ from . import shared_state
 from .policy_adapter import should_update_hps_for_client, mark_hpo_updated
 
 
+from collections import defaultdict
 
+# --- Reward baseline (EMA) state ---
+_REWARD_BASELINE = defaultdict(float)   # per-client baseline of raw reward
+_REWARD_BETA = 0.9   
 
 
 
@@ -253,18 +257,36 @@ def suggest_node(state: HPOState) -> HPOState:
         pass
 
     # === Compute reward & stability (unchanged reward; Lyapunov now uses YAML) ===
+    # === Compute reward (raw) and convert to advantage with an EMA baseline ===
     acc_hist = (state.get("recent_accs") or [])[-2:]
-    delta_acc = (acc_hist[-1] - acc_hist[-2]) if len(acc_hist) == 2 else 0.0
+    delta_acc = float((acc_hist[-1] - acc_hist[-2]) if len(acc_hist) == 2 else 0.0)
 
     reward_cfg = shared_state.CONFIG.get("stability", {}).get("reward", {})
-    lam = float(reward_cfg.get("lambda_penalty", 0.3))
+    lam   = float(reward_cfg.get("lambda_penalty", 0.3))
+    scale = float(reward_cfg.get("scale", 1.0))
 
-    #lam = float(state.get("lambda_penalty", 0.3))
-    instability = _instability_index(state)
-    reward = float(delta_acc - lam * instability)
-    # optional scaling knob (kept separate from formula)
-    reward *= float(reward_cfg.get("scale", 1.0))
-    state["reward"] = reward
+    instability = float(_instability_index(state))
+    raw = float(delta_acc - lam * instability)
+
+    # advantage = raw - baseline; update baseline with EMA(raw)
+    b = _REWARD_BASELINE[state['client_id']]
+    adv = raw - b
+    _REWARD_BASELINE[state['client_id']] = _REWARD_BETA * b + (1.0 - _REWARD_BETA) * raw
+
+    # (optional) clamp advantage before scaling; policy_update also clamps internally
+    # adv = max(min(adv, 1.0), -1.0)
+
+    # Keep some debug fields in state (optional but handy)
+    state["reward_raw"]   = raw
+    state["reward_base"]  = b
+    state["reward_adv"]   = adv
+    state["reward_scale"] = scale
+
+    # This field used to be your final reward; keep it updated for downstream prints
+    state["reward"] = adv * scale
+
+    print(f"[REWARD] cid={state['client_id']} raw={raw:.4f} base={b:.4f} adv={adv:.4f} "
+        f"delta_acc={delta_acc:.4f} instab={instability:.4f} scale={scale}")
 
 
 
@@ -339,103 +361,6 @@ def suggest_node(state: HPOState) -> HPOState:
     return state
 
 
-def suggest_node_old(state: HPOState) -> HPOState:
-    print(f"\n>>> Graph Node: SUGGEST for Client {state['client_id']}")
-
-
-    if _is_final_round(state) or state.get("phase") == "finalize":
-        print(f"[TRACE][GRAPH][finalize] SUGGEST skipped (final round) for client {state['client_id']}")
-        if "hps" not in state or not state["hps"]:
-            state["hps"] = state.get("current_hps", state.get("hps", {}))
-        state['llm_suggestion_latency'] = 0.0
-        return state
-
-    # 1) GUARD FIRST — skip duplicates before spending an LLM call
-    if not shared_state.mark_suggest_once(state['client_id'], state['global_epoch'], "post_analyze"):
-        print(f"[SKIP] Duplicate post_analyze SUGGEST for client {state['client_id']} epoch {state['global_epoch']}")
-        return state
-
-    # Pull freshest per-client metrics from shared_state (published by strategies)
-    try:
-        from agent import shared_state as _ss
-        cm = getattr(_ss, "CLIENT_METRICS", {}).get(state["client_id"])
-        if cm:
-            state.setdefault("recent_accs", cm.get("recent_accs", state.get("recent_accs", [])))
-            state.setdefault("recent_losses", cm.get("recent_losses", state.get("recent_losses", [])))
-            state.setdefault("hps_used", cm.get("hps_used", state.get("hps_used", {})))
-            state.setdefault("prev_hps", cm.get("prev_hps", state.get("prev_hps", {})))
-            state.setdefault("mu_used", cm.get("mu_used", state.get("mu_used", 0.0)))
-    except Exception:
-        pass
-
-    # === Compute reward & stability flag for on-the-fly adaptation ===
-    acc_hist = (state.get("recent_accs") or [])[-2:]
-    delta_acc = (acc_hist[-1] - acc_hist[-2]) if len(acc_hist) == 2 else 0.0
-
-    
-
-
-
-
-    lam = float(state.get("lambda_penalty", 0.3))  # optional: from config/state
-    instability = _instability_index(state)
-    reward = float(delta_acc - lam * instability)
-    state["reward"] = reward
-
-    # Lyapunov gate
-    state["lyapunov_pass"] = _lyapunov_pass(state)
-
-    # New: pass feedback to the shared mailbox (consumed in HPAgent.suggest)
-    shared_state.attach_feedback(
-        state['client_id'],
-        reward=state['reward'],
-        lyapunov_pass=state['lyapunov_pass'],
-    )
-
-
-
-
-    start_time = time.time()
-    # --- THIS IS THE FIX ---
-    # The 'suggest' function now gets the refined search_space from the 'analyze' node.
-    # Its output is placed into the 'hps' key, NOT 'search_space'.
-    hps, usage = hp_agent.suggest(
-        client_id=state['client_id'],
-        cluster_id=state['cluster_id'],
-        model_name=state['model_name'],
-        dataset_name=state['dataset_name'],
-        hpo_report=state['hpo_report'],
-        search_space=state['search_space'],
-        analysis_from_last_round=state.get('last_analysis'),
-        peer_history=state.get('peer_history')
-    )
-    end_time = time.time()
-    suggestion_latency = end_time - start_time
-    print(f"  ... LLM response received. HP Suggestion Latency: {suggestion_latency:.2f} seconds.")
-
-    # --- THIS IS THE CRITICAL DEBUGGING STEP ---
-    # Add this line to see what 'usage' contains inside the workflow node.
-    #print(f"  [WORKFLOW DEBUG] Usage data received in suggest_node: {usage}")
-    # ---------------------------------------------
-
-   
-    #print(f"  ... LLM response received. HP Suggestion Latency: {end_time - start_time:.2f} seconds.")
-    state['hps'] = hps # <-- Put the result in the 'hps' key.
-
-    # Make these HPs available to the strategy for the NEXT epoch
-    next_epoch = state['global_epoch'] + 1
-    shared_state.set_next_hps(state['client_id'], next_epoch, hps)
-
-
-    state['llm_suggestion_latency'] = suggestion_latency
-
-    state["last_prompt"] = getattr(hp_agent, "last_prompt", state.get("last_prompt", ""))
-    state["last_response"] = getattr(hp_agent, "last_response", state.get("last_response", ""))
-
-    state['suggestion_prompt_tokens'] = usage.get('prompt_tokens', 0)
-    state['suggestion_completion_tokens'] = usage.get('completion_tokens', 0)
-
-    return state
 
 # --- NEW NODE ---
 def log_metrics_node(state: HPOState) -> HPOState:

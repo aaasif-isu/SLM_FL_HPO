@@ -1,5 +1,4 @@
 # code/agent/policy_adapter.py
-
 import torch
 from dataclasses import dataclass
 from typing import Any, Optional, Dict
@@ -9,16 +8,16 @@ _base = None                 # frozen base model
 _model = None                # PEFT-wrapped model hosting multiple adapters
 _peft_ok = False
 
-# Per-adapter state (keyed by normalized adapter key)
-_optimizers: Dict[str, torch.optim.Optimizer] = {}
-_round_counter: Dict[str, int] = {}
-_active_key: Optional[str] = None
-_adapters: Dict[str, bool] = {}   # existence map
+# Per-adapter (keyed by cluster_id) state
+_optimizers: Dict[Any, torch.optim.Optimizer] = {}
+_round_counter: Dict[Any, int] = {}
+_active_key: Any = None
+_adapters: Dict[Any, bool] = {}   # existence map
 
 @dataclass
 class Cfg:
     enabled: bool = True
-    adapter_mode: str = "per_cluster"  # "per_cluster" | "single"
+    adapter_mode: str = "per_cluster"
     lora_r: int = 4
     lora_alpha: int = 16
     lora_dropout: float = 0.05
@@ -46,67 +45,19 @@ ANTI_STALE_HINT_LOCAL = (
     "- Output must remain a single valid JSON object."
 )
 
-# ---------- key normalization & matching helpers ----------
-
-def _norm_once(key: Any) -> str:
-    """
-    Canonicalize to a single string, but DO NOT double-prefix.
-    Accepts raw ints/strings; returns:
-      - "global" as-is
-      - "cluster:<int>" for ints and numeric strings
-      - if already looks like "cluster:<...>", return as-is
-    """
-    if isinstance(key, str):
-        if key == "global" or key.startswith("cluster:"):
-            return key
-        try:
-            return f"cluster:{int(key)}"
-        except Exception:
-            return f"cluster:{key}"
-    # non-str (e.g., int, numpy scalar)
-    try:
-        return f"cluster:{int(key)}"
-    except Exception:
-        return f"cluster:{str(key)}"
-
-def _is_param_of_adapter(param_name: str, k: str) -> bool:
-    """
-    True iff this parameter belongs to LoRA adapter 'k'.
-    Handles common PEFT patterns:
-      lora_A.<k>.weight / lora_B.<k>.weight
-      and legacy patterns with '... .<k>.' segments.
-    """
-    if "lora_" not in param_name:
-        return False
-    return (
-        f".{k}." in param_name
-        or param_name.endswith(f".{k}.weight")
-        or param_name.endswith(f".{k}.bias")
-        or f"lora_A.{k}" in param_name
-        or f"lora_B.{k}" in param_name
-    )
-
-# ---------- public init / access ----------
-
 def init_adapter_runtime(base_model, tok, cfg: dict):
     """
     Initialize the adaptation runtime.
 
     - If cfg.enabled == False (aka use_lora: false), run the frozen base model.
-    - If enabled == True, wrap the base with PEFT LoRA once.
+    - If enabled == True, try to wrap the base with PEFT LoRA once.
       Adapters are created lazily per key in set_active_adapter_key().
     - adapter_mode ("per_cluster" | "single") is stored in _cfg and used by set_active_adapter_key().
     """
-    global tokenizer, _base, _model, _cfg, _peft_ok, _optimizers, _round_counter, _adapters, _active_key
+    global tokenizer, _base, _model, _cfg, _peft_ok
     tokenizer = tok
     _base = base_model.eval() if base_model is not None else None
     _cfg = Cfg(**{**_cfg.__dict__, **(cfg or {})})
-
-    # reset state on re-init
-    _optimizers.clear()
-    _round_counter.clear()
-    _adapters.clear()
-    _active_key = None
 
     if _base is None:
         _model = None
@@ -123,16 +74,15 @@ def init_adapter_runtime(base_model, tok, cfg: dict):
 
     try:
         from peft import get_peft_model, LoraConfig, TaskType
-        lcfg = LoraConfig(
-            task_type=TaskType.CAUSAL_LM,
-            r=_cfg.lora_r, lora_alpha=_cfg.lora_alpha, lora_dropout=_cfg.lora_dropout
-        )
-        _model = get_peft_model(_base, lcfg)  # creates an initial "default" adapter
+        # Create an initial PEFT wrapper with a tiny default adapter we won't train.
+        lcfg = LoraConfig(task_type=TaskType.CAUSAL_LM,
+                          r=_cfg.lora_r, lora_alpha=_cfg.lora_alpha, lora_dropout=_cfg.lora_dropout)
+        _model = get_peft_model(_base, lcfg)             # creates an initial adapter ("default")
 
-        # Freeze EVERYTHING by default (including lora_*). Re-enable only the active adapter later.
-        for _, p in _model.named_parameters():
-            p.requires_grad = False
-
+        # Freeze everything by default (we’ll enable only the active adapter’s params)
+        for n, p in _model.named_parameters():
+            if "lora_" not in n:
+                p.requires_grad = False
         _model.eval()
         _peft_ok = True
         print(f"[Adapter] PEFT ready (adapter capable). mode={_cfg.adapter_mode}")
@@ -145,74 +95,75 @@ def init_adapter_runtime(base_model, tok, cfg: dict):
 def get_infer_model():
     return _model
 
-# ---------- adapter creation / switching ----------
-
-def _ensure_adapter_for_key(raw_key: Any):
+def _ensure_adapter_for_key(key: Any):
     """
-    Create a LoRA adapter and its optimizer for a new key if missing.
-    Accepts a raw key. Normalizes it exactly once.
+    Create a LoRA adapter and its optimizer for a new key (cluster_id) if missing.
     """
     global _adapters, _optimizers, _round_counter
 
     if not _peft_ok:
+        # No PEFT — nothing to do
         return
 
-    k = _norm_once(raw_key)
-    if k in _adapters:
+    if key in _adapters:
         return
 
     from peft import LoraConfig, TaskType
-    lcfg = LoraConfig(
-        task_type=TaskType.CAUSAL_LM,
-        r=_cfg.lora_r, lora_alpha=_cfg.lora_alpha, lora_dropout=_cfg.lora_dropout
-    )
+
+    # Add a named adapter to the existing PEFT model
+    lcfg = LoraConfig(task_type=TaskType.CAUSAL_LM,
+                      r=_cfg.lora_r, lora_alpha=_cfg.lora_alpha, lora_dropout=_cfg.lora_dropout)
     try:
+        # PeftModel exposes add_adapter in recent versions
         if hasattr(_model, "add_adapter"):
-            _model.add_adapter(adapter_name=k, peft_config=lcfg)
+            _model.add_adapter(adapter_name=str(key), peft_config=lcfg)
         else:
-            print(f"[Adapter] WARNING: add_adapter not available; using single adapter for {k}")
+            # Fallback: if add_adapter is not present, we still have at least the default adapter
+            # (In very old PEFT, multi-adapter might not be supported.)
+            print(f"[Adapter] WARNING: add_adapter not available; reusing single adapter for key={key}")
+            _adapters[key] = True
+            if key not in _optimizers:
+                # Build optimizer over current trainable params (likely the default adapter)
+                params = [p for n, p in _model.named_parameters() if p.requires_grad]
+                _optimizers[key] = torch.optim.AdamW(params, lr=_cfg.step_lr)
+                _round_counter[key] = 0
+            return
     except Exception as e:
-        print(f"[Adapter] add_adapter failed for key={k}: {e}")
+        print(f"[Adapter] add_adapter failed for key={key}: {e}")
+        # Fallback as above
+        _adapters[key] = True
+        if key not in _optimizers:
+            params = [p for n, p in _model.named_parameters() if p.requires_grad]
+            _optimizers[key] = torch.optim.AdamW(params, lr=_cfg.step_lr)
+            _round_counter[key] = 0
+        return
 
-    _set_trainable_for_adapter(k)
+    # Mark only this adapter as trainable
+    _set_trainable_for_adapter(key)
 
-    # Build optimizer over CURRENT trainable params (this adapter only) in fp32
-    params = [p for _, p in _model.named_parameters() if p.requires_grad]
-    for p in params:
-        if p.data.dtype in (torch.float16, torch.bfloat16):
-            p.data = p.data.float()
-    _optimizers[k] = torch.optim.AdamW(params, lr=_cfg.step_lr, eps=1e-6)
-    _round_counter[k] = 0
-    _adapters[k] = True
-    print(f"[Adapter] Created LoRA adapter for key={k}")
+    # Create optimizer for this adapter’s params
+    params = [p for n, p in _model.named_parameters() if p.requires_grad]
+    _optimizers[key] = torch.optim.AdamW(params, lr=_cfg.step_lr)
+    _round_counter[key] = 0
+    _adapters[key] = True
+    print(f"[Adapter] Created LoRA adapter for key={key}")
 
-def _set_trainable_for_adapter(key_any: Any):
+def _set_trainable_for_adapter(key: Any):
     """
-    Freeze all params, then enable requires_grad only for the named adapter's LoRA params.
-    Accepts either raw or normalized; normalizes exactly once.
+    Freeze all LoRA params, then enable requires_grad only for the named adapter.
     """
-    k = _norm_once(key_any)
-
     # Switch active adapter for forward calls
     if hasattr(_model, "set_adapter"):
-        try:
-            _model.set_adapter(k)
-        except Exception as e:
-            # Helpful diagnostic
-            print(f"[Adapter] WARNING: set_adapter({k}) failed: {e}")
+        _model.set_adapter(str(key))
 
-    # Freeze all; then unfreeze only this adapter’s LoRA params
+    # Freeze all params, then unfreeze only this adapter’s LoRA params
     for n, p in _model.named_parameters():
         if "lora_" in n:
-            p.requires_grad = _is_param_of_adapter(n, k)
+            p.requires_grad = (f".{key}." in n) or (n.endswith(f".{key}.weight")) or (n.endswith(f".{key}.bias"))
         else:
             p.requires_grad = False
 
-    # Optional: sanity print
-    # trainables = [n for n, p in _model.named_parameters() if p.requires_grad]
-    # print(f"[ADAPTER-SWITCH] key={k} num_trainables={len(trainables)} sample={trainables[:3]}")
-
-def set_active_adapter_key(raw_key: Any):
+def set_active_adapter_key(key: Any):
     """
     Public API: activate (and if needed, create) the adapter for this key.
     Honors config:
@@ -226,20 +177,18 @@ def set_active_adapter_key(raw_key: Any):
         _active_key = None
         return
 
-    # Decide the *raw* key we want, then normalize exactly once here
-    raw_actual = "global" if getattr(_cfg, "adapter_mode", "per_cluster") == "single" else raw_key
-    k = _norm_once(raw_actual)
+    # Collapse to a single shared adapter when requested
+    actual_key = "global" if getattr(_cfg, "adapter_mode", "per_cluster") == "single" else key
 
     # Fast path: already active
-    if _active_key == k:
+    if _active_key == actual_key:
         return
 
     # Ensure the adapter exists and is the only trainable one
-    _ensure_adapter_for_key(k)          # k is already normalized
-    _set_trainable_for_adapter(k)       # use same normalized k
-    _active_key = k
+    _ensure_adapter_for_key(actual_key)
+    _set_trainable_for_adapter(actual_key)
+    _active_key = actual_key
 
-# ---------- tiny on-the-fly policy update ----------
 
 def _build_chat_io(prompt: str, response: Optional[str] = None):
     """
@@ -268,17 +217,10 @@ def _build_chat_io(prompt: str, response: Optional[str] = None):
 
     return {"input_ids": input_ids, "attention_mask": attn_mask}, labels, int(resp["input_ids"].shape[1])
 
-def policy_update(
-    *,
-    prompt: str,
-    response: str,
-    reward: float,
-    lyapunov_pass: bool,
-    require_lyapunov: bool = False,  # only block if caller opts in
-):
+def policy_update(*, prompt: str, response: str, reward: float, lyapunov_pass: bool):
     """
     Tiny LoRA step for the CURRENT active adapter (per-cluster), scaled by reward,
-    with an optional Lyapunov gate and a KL trust-region.
+    with a Lyapunov gate and a KL trust-region.
     """
     info = {"updated": False, "reason": "", "kl": 0.0}
 
@@ -299,8 +241,7 @@ def policy_update(
         info["reason"] = "frequency_gate"
         return info
 
-    # Optional Lyapunov gate (only if the caller requires it)
-    if require_lyapunov and not lyapunov_pass:
+    if not lyapunov_pass:
         info["reason"] = "lyapunov_block"
         return info
 
@@ -331,17 +272,19 @@ def policy_update(
 
     loss.backward()
     torch.nn.utils.clip_grad_norm_(
-        (p for _, p in _model.named_parameters() if p.requires_grad),
+        (p for n, p in _model.named_parameters() if p.requires_grad),
         _cfg.max_grad_norm
     )
     optimizer.step()
     _model.eval()
 
-    # KL proxy (magnitude only)
+    # KL proxy (sign fixed: positive when moving away from old policy on this response)
+
     with torch.no_grad():
         new = _model(**inputs, labels=labels)
         new_logp = float(-new.loss.item() * max(n_tok, 1))
 
+    # Non-negative trust-region proxy (magnitude only)
     kl_proxy = abs((old_logp - new_logp) / max(n_tok, 1))
     info["kl"] = float(kl_proxy)
 
@@ -358,8 +301,9 @@ def policy_update(
     info.update({"updated": True, "reason": "ok"})
     return info
 
-# --- HPO call-gating (independent of adapter update frequency) ---
+# --- HPO call-gating (separate from adapter update frequency) ---
 
+# Keep a separate counter namespace so we don't collide with adapter rounds
 _hpo_last_update_round: Dict[Any, int] = {}
 
 def should_update_hps_for_client(
@@ -372,6 +316,14 @@ def should_update_hps_for_client(
     min_delta: float = 0.0,
     require_lyapunov: bool = False,
 ) -> bool:
+    """
+    Centralized policy: decide whether we should call the HP agent at all.
+    This is independent from LoRA adapter update frequency (every_k_rounds).
+
+    - min_round_gap: minimum rounds between *successful* HP updates for this client
+    - min_delta: require |Δacc| >= min_delta to consider an update
+    - require_lyapunov: if True, only allow when lyapunov_pass is True
+    """
     last = _hpo_last_update_round.get(client_id, -10**9)
 
     # 1) frequency gate
@@ -391,5 +343,10 @@ def should_update_hps_for_client(
 
     return True
 
+
 def mark_hpo_updated(client_id: int, round_idx: int) -> None:
+    """
+    Record that we actually committed new HPs for this client at this round.
+    Used by the workflow after a successful suggestion is written.
+    """
     _hpo_last_update_round[client_id] = int(round_idx)
