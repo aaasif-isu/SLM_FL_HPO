@@ -6,10 +6,10 @@ model:
   use_lora: true              # true = enable LoRA; false = run frozen base (no adapter training)
   adapter_mode: per_cluster   # per_cluster | single
   lora:
-    r: 4
-    alpha: 4
+    r: 8
+    alpha: 16
     dropout: 0.05
-    step_lr: 2e-5
+    step_lr: 1e-5
     max_grad_norm: 0.5
     kl_max: 0.01
     every_k_rounds: 1         # LoRA update frequency (policy_adapter.policy_update gate)
@@ -23,8 +23,8 @@ stability:
   # SUGGEST pre-gate (happens BEFORE any HP agent LLM call)
   pre_gate:
     min_round_gap: 1          # minimum rounds between *successful* HP updates for a client
-    min_delta: 0.002            # require |Δacc| ≥ this to call HP agent (e.g., 0.002)
-    require_lyapunov: true   # if true, Lyapunov must pass to allow HP call
+    min_delta: 0.0005            # require |Δacc| ≥ this to call HP agent (e.g., 0.002)
+    require_lyapunov: false   # if true, Lyapunov must pass to allow HP call
 
   # Lyapunov parameters (used by workflow._lyapunov_pass)
   lyapunov:
@@ -48,6 +48,7 @@ agents:
   api_model: openai/gpt-4o-mini
   slm_model: "Qwen/Qwen2.5-0.5B-Instruct"
   local_allow_cpu: false     # <- important: don't run local model on CPU
+  cuda_device: 1        # ← force SLM+LoRA to GPU 1
 
 # ============================================
 # Model and Dataset Configuration
