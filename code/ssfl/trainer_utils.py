@@ -16,6 +16,9 @@ import csv
 import threading
 from typing import Dict
 
+from agent import shared_state
+use_lora = shared_state.CONFIG.get("model", {}).get("use_lora", False)
+
 # This global lock ensures that only one thread can write to the CSV at a time.
 CSV_LOCK = threading.Lock()
 
@@ -655,10 +658,11 @@ def log_global_metrics(
     
     # Create a new, specific filename for global metrics
     #log_file = os.path.join(results_dir, f"{model_name}__{dataset_name}_global_metrics.csv")
+    #use_lora = config.get("model", {}).get("use_lora", False)
     log_file = os.path.join(
         results_dir,
         f"{model_name}__{dataset_name}_clients{num_clients}_"
-        f"imb{imbalance_ratio}_epochs{global_epochs}_{fl_mode}_global_metrics.csv"
+        f"imb{imbalance_ratio}_epochs{global_epochs}_{fl_mode}_lora_{use_lora}_global_metrics.csv"
     )
 
     file_exists = os.path.isfile(log_file)

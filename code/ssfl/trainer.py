@@ -42,6 +42,8 @@ def train_model(model_name, num_classes, in_channels,
     fl_mode = config.get('fl_mode', 'splitfed') # Default to 'splitfed'
     print(f"--- Using FL Mode: {fl_mode.upper()} ---")
 
+    use_lora = config.get("model", {}).get("use_lora", False)
+
     # Commented out for the decoupling CPU GPU task 
     #client_states = [{"search_space": initial_search_space.copy(), "hpo_report": {}, "last_analysis": None} for i in range(num_clients)]
 
@@ -51,7 +53,7 @@ def train_model(model_name, num_classes, in_channels,
 
     detailed_log_filename = (
         f"{model_name}__{dataset_name}_clients{num_clients}_"
-        f"imb{imbalance_ratio}_epochs{global_epochs}_{fl_mode}_training_details_metrics.csv"
+        f"imb{imbalance_ratio}_epochs{global_epochs}_{fl_mode}_lora_{use_lora}_training_details_metrics.csv"
     )
 
     # Common arguments for all strategies
@@ -314,9 +316,11 @@ def train_model(model_name, num_classes, in_channels,
         # ===================================================================
         # This now includes the imbalance ratio and FL mode to prevent overwrites.
         # Example: hpo_state_ResNet18__pacs_imb0.1_splitfed.yaml
+        
+
         experiment_specific_filename = (
             f"hpo_state_{model_name}__{dataset_name}_clients{num_clients}_"
-            f"imb{imbalance_ratio}_epochs{global_epochs}_{fl_mode}.yaml"
+            f"imb{imbalance_ratio}_epochs{global_epochs}_{fl_mode}_lora_{use_lora}.yaml"
         )
         # ===================================================================
 
