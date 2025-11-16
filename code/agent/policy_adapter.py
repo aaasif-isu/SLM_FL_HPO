@@ -1,5 +1,6 @@
 # code/agent/policy_adapter.py
 
+import os
 import torch
 from dataclasses import dataclass
 from typing import Any, Optional, Dict, List
@@ -473,3 +474,31 @@ def should_update_hps_for_client(
 
 def mark_hpo_updated(client_id: int, round_idx: int) -> None:
     _hpo_last_update_round[client_id] = int(round_idx)
+
+
+
+# --- Saving PEFT / LoRA state for later evaluation ---
+from pathlib import Path
+
+def save_all_lora_adapters(save_dir: str) -> None:
+    """
+    Save the current PEFT LoRA model (with all adapters) + tokenizer
+    so we can reload and evaluate later.
+
+    This assumes:
+      - _peft_ok is True
+      - _model is a PEFT-wrapped causal LM
+    """
+    Path(save_dir).mkdir(parents=True, exist_ok=True)
+
+    if not _peft_ok or _model is None:
+        print("[Adapter-SAVE] No PEFT model with adapters; nothing to save.")
+        return
+
+    print(f"[Adapter-SAVE] Saving LoRA PEFT model (all adapters) to: {save_dir}")
+    try:
+        _model.save_pretrained(save_dir)
+        if tokenizer is not None:
+            tokenizer.save_pretrained(save_dir)
+    except Exception as e:
+        print(f"[Adapter-SAVE] ERROR while saving LoRA adapters: {e}")

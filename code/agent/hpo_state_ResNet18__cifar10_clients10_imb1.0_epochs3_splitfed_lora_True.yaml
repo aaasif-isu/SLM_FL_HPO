@@ -97,10 +97,10 @@
                     optimizer: AdamW
                     scheduler: None
                 mu: 0.0
-            final_test_accuracy: 59.875801282051285
+            final_test_accuracy: 62.33974358974359
         'Global Epoch: 2':
             hps_suggested: *id001
-            final_test_accuracy: 59.79567307692308
+            final_test_accuracy: 68.20913461538461
 -   client_id: 1
     final_search_space: *id002
     original_hpo_report:
@@ -113,7 +113,7 @@
                     optimizer: AdamW
                     scheduler: CosineAnnealingLR
                     local_epochs: 2
-                    batch_size: 16
+                    batch_size: 64
                     dropout_rate: 0.1
                 server:
                     learning_rate: 0.001
@@ -121,10 +121,10 @@
                     optimizer: AdamW
                     scheduler: None
                 mu: 0.0
-            final_test_accuracy: 46.69471153846154
+            final_test_accuracy: 54.86778846153846
         'Global Epoch: 2':
             hps_suggested: *id003
-            final_test_accuracy: 66.47636217948718
+            final_test_accuracy: 61.27804487179487
 -   client_id: 2
     final_search_space:
         client_hps: &id005
@@ -240,7 +240,7 @@
                 initial: CosineAnnealingLR
             local_epochs:
                 type: int
-                min: 2
+                min: 1
                 max: 3
                 initial: 2
             batch_size:
@@ -305,7 +305,7 @@
                     optimizer: AdamW
                     scheduler: None
                 mu: 0.0
-            final_test_accuracy: 61.91907051282051
+            final_test_accuracy: 55.92948717948718
 -   client_id: 4
     final_search_space: *id002
     original_hpo_report:
@@ -326,10 +326,10 @@
                     optimizer: AdamW
                     scheduler: None
                 mu: 0.0
-            final_test_accuracy: 62.16947115384615
+            final_test_accuracy: 46.794871794871796
         'Global Epoch: 2':
             hps_suggested: *id004
-            final_test_accuracy: 69.54126602564102
+            final_test_accuracy: 58.23317307692308
 -   client_id: 5
     final_search_space:
         client_hps: *id005
@@ -434,7 +434,7 @@
                     optimizer: AdamW
                     scheduler: None
                 mu: 0.0
-            final_test_accuracy: 59.12459935897436
+            final_test_accuracy: 66.08573717948718
 -   client_id: 7
     final_search_space: *id002
     original_hpo_report:
@@ -455,10 +455,10 @@
                     optimizer: AdamW
                     scheduler: None
                 mu: 0.0
-            final_test_accuracy: 54.88782051282051
+            final_test_accuracy: 50.681089743589745
         'Global Epoch: 2':
             hps_suggested: *id008
-            final_test_accuracy: 72.40584935897436
+            final_test_accuracy: 55.90945512820513
 -   client_id: 8
     final_search_space: *id002
     original_hpo_report:
@@ -479,10 +479,10 @@
                     optimizer: AdamW
                     scheduler: None
                 mu: 0.0
-            final_test_accuracy: 47.44591346153846
+            final_test_accuracy: 51.58253205128205
         'Global Epoch: 1':
             hps_suggested: *id009
-            final_test_accuracy: 47.99679487179487
+            final_test_accuracy: 55.12820512820513
         'Global Epoch: 2':
             hps_suggested:
                 client:
@@ -500,7 +500,7 @@
                     optimizer: AdamW
                     scheduler: None
                 mu: 0.0
-            final_test_accuracy: 53.36538461538461
+            final_test_accuracy: 58.05288461538461
 -   client_id: 9
     final_search_space:
         client_hps:
@@ -541,6 +541,9 @@
             batch_size:
                 type: choice
                 values:
+                - 8
+                - 16
+                - 32
                 - 64
                 - 128
                 initial: 64
@@ -597,7 +600,7 @@
                     optimizer: AdamW
                     scheduler: None
                 mu: 0.0
-            final_test_accuracy: 63.962339743589745
+            final_test_accuracy: 53.225160256410255
         'Global Epoch: 1':
             hps_suggested: *id010
-            final_test_accuracy: 62.009214743589745
+            final_test_accuracy: 59.895833333333336

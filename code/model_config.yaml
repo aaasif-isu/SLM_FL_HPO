@@ -11,10 +11,10 @@ model:
     dropout: 0.05
     step_lr: 1e-5
     max_grad_norm: 0.5
-    kl_max: 0.01
+    kl_max: 0.05
     every_k_rounds: 1         # LoRA update frequency (policy_adapter.policy_update gate)
 
-    # Pick one of these based on base model name:
+        # Pick one of these based on base model name:
     # For Qwen / Qwen2 style:
     #target_modules: ["c_attn", "c_proj", "w1", "w2"]
     
@@ -26,7 +26,6 @@ model:
     #
     # For Mamba-like:
     # target_modules: ["x_proj", "dt_proj"]
-    
 
 stability:
 
@@ -61,8 +60,8 @@ agents:
   backend: local              # options: local | openrouter | auto
   api_model: openai/gpt-4o-mini
   slm_model: "Qwen/Qwen2.5-0.5B-Instruct"
-  local_allow_cpu: true     # <- important: don't run local model on CPU #false if 2 gpus only
-  cuda_device: 1        # ← force SLM+LoRA to GPU 1 #0 for 1 gpu, 1 for 2 gpu
+  local_allow_cpu: true     
+  # cuda_device: 1        # ← force SLM+LoRA to GPU 1 #0 for 1 gpu, 1 for 2 gpu
 
 # ============================================
 # Model and Dataset Configuration
@@ -92,8 +91,8 @@ imbalance_ratio: 1.0
 
 # Fractions of training and testing data to use.
 # 1.0 means using the full dataset.
-train_sample_fraction: 1.0
-test_sample_fraction: 1.0
+train_sample_fraction: 0.5
+test_sample_fraction: 0.5
 
 # Minimum number of samples each client must have.
 # Prevents clients from having too few data points in federated settings.
@@ -118,7 +117,7 @@ num_clients: 10
 
 # Number of global communication rounds (epochs).
 # Each round consists of multiple local updates and aggregation.
-global_epochs: 5
+global_epochs: 3
 
 # Fraction of clients selected per round for training.
 # E.g., 0.3 means 30% of total clients participate each round.

@@ -10,6 +10,7 @@ import json
 
 from ssfl.utils_seed import seed_everything
 from agent import shared_state
+from agent import llm_api, policy_adapter
 
 
 from ssfl.utils import (
@@ -19,6 +20,9 @@ from ssfl.utils import (
     subsample_dataset,
     Tee
 )
+
+
+
 
 def load_config(path="model_config.yaml"):
     with open(path, "r") as f:
@@ -39,8 +43,10 @@ def main():
     config = load_config(args.config)
     shared_state.CONFIG = config
 
+
     print("[CFG] Using config file:", args.config)
     print("[CFG] Parsed model section:", json.dumps(config.get("model", {}), indent=2))
+
 
     # Initialize global seed
     if "experiment" in config and "seed" in config["experiment"]:
@@ -192,6 +198,23 @@ def main():
     print("===== Analyzer Agent Summary (Aggregated) =====")
     print(json.dumps(aggregate_analyzer_events(), indent=2))
     print("==========================================\n")
+
+    # # --- Save SLM / LoRA state for later evaluation ---
+    # model_cfg = config.get("model", {})
+    # use_lora = bool(model_cfg.get("use_lora", False))
+
+    # # args.config is the path like: runs/JOBID_TASKID/config.yaml (from Slurm)
+    # config_path = args.config
+    # run_dir = os.path.dirname(config_path) or "."
+
+    # if use_lora:
+    #     # LoRA-enabled run: save all adapters (for all clusters) + tokenizer
+    #     save_dir = os.path.join(run_dir, "slm_lora_adapters")
+    #     policy_adapter.save_all_lora_adapters(save_dir)
+    # else:
+    #     # Baseline run (no LoRA): save the pure SLM + tokenizer
+    #     save_dir = os.path.join(run_dir, "slm_baseline")
+    #     llm_api.save_slm_baseline(save_dir)
 
 
 

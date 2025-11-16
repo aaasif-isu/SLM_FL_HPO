@@ -28,6 +28,26 @@ API_MODEL_ID = CFG.get("agents", {}).get("api_model", "openai/gpt-4o-mini")
 LOCAL_ALLOW_CPU = bool(CFG.get("agents", {}).get("local_allow_cpu", False))
 EXPLICIT_CUDA_DEVICE = CFG.get("agents", {}).get("cuda_device", None)
 
+
+def refresh_from_shared_state() -> None:
+    """
+    Sync llm_api's local CFG and agent settings from shared_state.CONFIG.
+    Call this *after* main() sets shared_state.CONFIG.
+    """
+    global CFG, BACKEND, SLM_MODEL_ID, API_MODEL_ID, LOCAL_ALLOW_CPU, EXPLICIT_CUDA_DEVICE
+
+    CFG = shared_state.CONFIG or {}
+    agents_cfg = CFG.get("agents", {})
+
+    BACKEND = (agents_cfg.get("backend") or "local").lower().strip()
+    SLM_MODEL_ID = agents_cfg.get("slm_model", "Qwen/Qwen2.5-0.5B-Instruct")
+    API_MODEL_ID = agents_cfg.get("api_model", "openai/gpt-4o-mini")
+    LOCAL_ALLOW_CPU = bool(agents_cfg.get("local_allow_cpu", False))
+    EXPLICIT_CUDA_DEVICE = agents_cfg.get("cuda_device", None)
+
+    print(f"[llm_api] Config refreshed. use_lora={CFG.get('model', {}).get('use_lora', None)} backend={BACKEND}")
+
+
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_SITE    = os.getenv("OPENROUTER_SITE", "http://localhost:3000")
 OPENROUTER_APP     = os.getenv("OPENROUTER_APP", "FedHPO")
@@ -316,20 +336,26 @@ def call_llm(prompt: str) -> Tuple[str, Dict]:
 
 # --- Saving baseline SLM (no LoRA) ---
 
-import os
+
+from pathlib import Path
 
 def save_slm_baseline(save_dir: str) -> None:
     """
-    Save the frozen base SLM (no LoRA) so we can reload it later.
-    Call this from the run where model.use_lora == False.
+    Save the baseline SLM (no LoRA) + tokenizer for later evaluation.
+    Uses the _base_model that we keep around in llm_api.
     """
-    global _tokenizer, _base_model
+    Path(save_dir).mkdir(parents=True, exist_ok=True)
 
-    if _base_model is None or _tokenizer is None:
-        print("[SLM-SAVE] No base model/tokenizer loaded; nothing to save.")
+    global _base_model, _tokenizer
+    if _base_model is None:
+        print("[LLM-SAVE] No base SLM loaded; nothing to save.")
         return
 
-    os.makedirs(save_dir, exist_ok=True)
-    _base_model.save_pretrained(save_dir)
-    _tokenizer.save_pretrained(save_dir)
-    print(f"[SLM-SAVE] Saved baseline SLM (no LoRA) to: {save_dir}")
+    model_to_save = _base_model
+    print(f"[LLM-SAVE] Saving baseline SLM (no LoRA) to: {save_dir}")
+    try:
+        model_to_save.save_pretrained(save_dir)
+        if _tokenizer is not None:
+            _tokenizer.save_pretrained(save_dir)
+    except Exception as e:
+        print(f"[LLM-SAVE] ERROR while saving baseline SLM: {e}")
