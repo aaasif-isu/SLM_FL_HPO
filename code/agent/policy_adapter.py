@@ -2,7 +2,7 @@
 
 import torch
 from dataclasses import dataclass
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, List
 
 tokenizer = None
 _base = None                 # frozen base model
@@ -26,6 +26,7 @@ class Cfg:
     max_grad_norm: float = 1.0
     kl_max: float = 0.05
     every_k_rounds: int = 1
+    target_modules: Optional[List[str]] = None
 
 _cfg = Cfg()
 
@@ -123,9 +124,18 @@ def init_adapter_runtime(base_model, tok, cfg: dict):
 
     try:
         from peft import get_peft_model, LoraConfig, TaskType
+        targets = _cfg.target_modules
+
+        if targets is None:
+            print("[Adapter] WARNING: target_modules is None; using PEFT defaults.")
+        else:
+            print(f"[Adapter] Using target_modules={targets}")
+
+
         lcfg = LoraConfig(
             task_type=TaskType.CAUSAL_LM,
-            r=_cfg.lora_r, lora_alpha=_cfg.lora_alpha, lora_dropout=_cfg.lora_dropout
+            r=_cfg.lora_r, lora_alpha=_cfg.lora_alpha, lora_dropout=_cfg.lora_dropout,
+            target_modules=targets,bias="none",
         )
         _model = get_peft_model(_base, lcfg)  # creates an initial "default" adapter
 
@@ -162,9 +172,70 @@ def _ensure_adapter_for_key(raw_key: Any):
         return
 
     from peft import LoraConfig, TaskType
+
+    targets = _cfg.target_modules
+    if targets is None:
+        print(f"[Adapter] WARNING: target_modules is None when creating adapter {k}; using PEFT defaults.")
+    else:
+        print(f"[Adapter] Creating adapter {k} with target_modules={targets}")
+
     lcfg = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
-        r=_cfg.lora_r, lora_alpha=_cfg.lora_alpha, lora_dropout=_cfg.lora_dropout
+        r=_cfg.lora_r,
+        lora_alpha=_cfg.lora_alpha,
+        lora_dropout=_cfg.lora_dropout,
+        target_modules=targets,
+        bias="none",
+    )
+
+    try:
+        if hasattr(_model, "add_adapter"):
+            _model.add_adapter(adapter_name=k, peft_config=lcfg)
+        else:
+            print(f"[Adapter] WARNING: add_adapter not available; using single adapter for {k}")
+    except Exception as e:
+        print(f"[Adapter] add_adapter failed for key={k}: {e}")
+
+    _set_trainable_for_adapter(k)
+
+    # Build optimizer over CURRENT trainable params (this adapter only) in fp32
+    params = [p for _, p in _model.named_parameters() if p.requires_grad]
+    for p in params:
+        if p.data.dtype in (torch.float16, torch.bfloat16):
+            p.data = p.data.float()
+    _optimizers[k] = torch.optim.AdamW(params, lr=_cfg.step_lr, eps=1e-6)
+    _round_counter[k] = 0
+    _adapters[k] = True
+    print(f"[Adapter] Created LoRA adapter for key={k}")
+
+
+
+def _ensure_adapter_for_key_old(raw_key: Any):
+    """
+    Create a LoRA adapter and its optimizer for a new key if missing.
+    Accepts a raw key. Normalizes it exactly once.
+    """
+    global _adapters, _optimizers, _round_counter
+
+    if not _peft_ok:
+        return
+
+    k = _norm_once(raw_key)
+    if k in _adapters:
+        return
+
+    from peft import LoraConfig, TaskType
+    target = _cfg.target_modules
+    if targets is None:
+        print(f"[Adapter] WARNING: target_modules is None when creating adapter {k}; using PEFT defaults.")
+    else:
+        print(f"[Adapter] Creating adapter {k} with target_modules={targets}")
+
+
+    lcfg = LoraConfig(
+        task_type=TaskType.CAUSAL_LM,
+        r=_cfg.lora_r, lora_alpha=_cfg.lora_alpha, lora_dropout=_cfg.lora_dropout,
+        target_modules=targets,bias="none",
     )
     try:
         if hasattr(_model, "add_adapter"):
@@ -207,6 +278,15 @@ def _set_trainable_for_adapter(key_any: Any):
             p.requires_grad = _is_param_of_adapter(n, k)
         else:
             p.requires_grad = False
+
+    num_t = sum(
+        p.numel()
+        for _, p in _model.named_parameters()
+        if p.requires_grad
+    )
+    print(f"[Adapter] Active adapter={k} trainable params={num_t}")
+
+    
 
     # Optional: sanity print
     # trainables = [n for n, p in _model.named_parameters() if p.requires_grad]

@@ -11,8 +11,21 @@ model:
     dropout: 0.05
     step_lr: 1e-5
     max_grad_norm: 0.5
-    kl_max: 0.01
-    every_k_rounds: 2         # LoRA update frequency (policy_adapter.policy_update gate)
+    kl_max: 0.05
+    every_k_rounds: 1         # LoRA update frequency (policy_adapter.policy_update gate)
+
+        # Pick one of these based on base model name:
+    # For Qwen / Qwen2 style:
+    #target_modules: ["c_attn", "c_proj", "w1", "w2"]
+    
+    # For LLaMA/Meta style:
+    target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
+    #
+    # For GPT-Neo:
+    # target_modules: ["q_proj", "k_proj", "v_proj", "out_proj"]
+    #
+    # For Mamba-like:
+    # target_modules: ["x_proj", "dt_proj"]
 
 stability:
 
@@ -47,8 +60,8 @@ agents:
   backend: local              # options: local | openrouter | auto
   api_model: openai/gpt-4o-mini
   slm_model: "Qwen/Qwen2.5-0.5B-Instruct"
-  local_allow_cpu: false     # <- important: don't run local model on CPU #false if 2 gpus only
-  cuda_device: 1        # ← force SLM+LoRA to GPU 1 #0 for 1 gpu, 1 for 2 gpu
+  local_allow_cpu: true     
+  # cuda_device: 1        # ← force SLM+LoRA to GPU 1 #0 for 1 gpu, 1 for 2 gpu
 
 # ============================================
 # Model and Dataset Configuration

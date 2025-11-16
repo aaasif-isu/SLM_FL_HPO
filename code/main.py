@@ -138,7 +138,7 @@ def main():
 
     val_batch_size = config.get('val_batch_size', 128)
     test_loader = torch.utils.data.DataLoader(test_subset, batch_size=val_batch_size, shuffle=False, drop_last=True)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # --- 4. PREPARE SHARED STATE FOR PARALLEL WORK ---
     # This logic is moved here from trainer.py to be shared between threads.

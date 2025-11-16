@@ -87,6 +87,58 @@ def _safe_set_pad(tok: AutoTokenizer):
 
 # ===================== Device logic =====================
 def _choose_slm_device() -> Optional[torch.device]:
+    """
+    Policy:
+      - If >= 2 GPUs:
+          * FL training assumed on cuda:0
+          * SLM (Qwen + LoRA) goes to cuda:1
+      - If exactly 1 GPU:
+          * FL training on cuda:0
+          * SLM on CPU if LOCAL_ALLOW_CPU else disabled (None)
+      - If 0 GPUs:
+          * SLM on CPU if LOCAL_ALLOW_CPU else disabled (None)
+
+    EXPLICIT_CUDA_DEVICE (agents.cuda_device) is treated as a manual override.
+    """
+    try:
+        num_gpus = torch.cuda.device_count()
+
+        # 0) No CUDA at all
+        if num_gpus == 0:
+            if LOCAL_ALLOW_CPU:
+                print("[llm_api] No CUDA available; falling back to CPU for SLM.")
+                return torch.device("cpu")
+            else:
+                print("[llm_api] No CUDA available and CPU fallback disabled.")
+                return None
+
+        # 1) Manual override from config
+        if EXPLICIT_CUDA_DEVICE is not None:
+            idx = int(EXPLICIT_CUDA_DEVICE)
+            if 0 <= idx < num_gpus:
+                print(f"[llm_api] Using explicit cuda:{idx} for SLM.")
+                return torch.device(f"cuda:{idx}")
+            else:
+                print(f"[llm_api] cuda_device={idx} invalid (device_count={num_gpus}); ignoring override.")
+
+        # 2) Automatic policy
+        if num_gpus >= 2:
+            print("[llm_api] Using cuda:1 for SLM (cuda:0 reserved for FL training).")
+            return torch.device("cuda:1")
+        else:  # num_gpus == 1
+            if LOCAL_ALLOW_CPU:
+                print("[llm_api] Only one GPU visible; using CPU for SLM to keep cuda:0 for FL.")
+                return torch.device("cpu")
+            else:
+                print("[llm_api] Only one GPU visible and CPU fallback disabled; skipping local SLM.")
+                return None
+
+    except Exception as e:
+        print(f"[llm_api] Device selection error: {e}")
+        return None
+
+
+def _choose_slm_device_old() -> Optional[torch.device]:
     try:
         num_gpus = torch.cuda.device_count()
         if EXPLICIT_CUDA_DEVICE is not None:
@@ -140,6 +192,9 @@ def _maybe_init_local() -> None:
             "max_grad_norm": float(l.get("max_grad_norm", 0.5)),
             "kl_max": float(l.get("kl_max", 0.01)),
             "every_k_rounds": int(l.get("every_k_rounds", 3)),
+
+            "target_modules": l.get("target_modules", None),
+
         }
 
         init_adapter_runtime(base_model=model, tok=tok, cfg=adapter_cfg)
@@ -257,3 +312,24 @@ def call_llm(prompt: str) -> Tuple[str, Dict]:
         return txt, usage
     print("[llm_api] Falling back to OpenRouter.")
     return _call_llm_openrouter(prompt)
+
+
+# --- Saving baseline SLM (no LoRA) ---
+
+import os
+
+def save_slm_baseline(save_dir: str) -> None:
+    """
+    Save the frozen base SLM (no LoRA) so we can reload it later.
+    Call this from the run where model.use_lora == False.
+    """
+    global _tokenizer, _base_model
+
+    if _base_model is None or _tokenizer is None:
+        print("[SLM-SAVE] No base model/tokenizer loaded; nothing to save.")
+        return
+
+    os.makedirs(save_dir, exist_ok=True)
+    _base_model.save_pretrained(save_dir)
+    _tokenizer.save_pretrained(save_dir)
+    print(f"[SLM-SAVE] Saved baseline SLM (no LoRA) to: {save_dir}")
