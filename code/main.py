@@ -10,7 +10,7 @@ import json
 
 from ssfl.utils_seed import seed_everything
 from agent import shared_state
-from agent import llm_api, policy_adapter
+# from agent import llm_api, policy_adapter
 
 
 from ssfl.utils import (
@@ -57,7 +57,9 @@ def main():
     from ssfl.trainer import train_model                      # deferred
     from agent.cpu_worker import background_cpu_work          # deferred
     from agent.shared_state import aggregate_hp_events, aggregate_analyzer_events, reset_aggregates, results_queue  # deferred if needed
-    from agent import llm_api  # optional explicit import; now it sees CONFIG
+    from agent import llm_api, policy_adapter  # optional explicit import; now it sees CONFIG
+
+    llm_api.refresh_from_shared_state()
 
     reset_aggregates()
 
@@ -199,24 +201,22 @@ def main():
     print(json.dumps(aggregate_analyzer_events(), indent=2))
     print("==========================================\n")
 
-    # # --- Save SLM / LoRA state for later evaluation ---
-    # model_cfg = config.get("model", {})
-    # use_lora = bool(model_cfg.get("use_lora", False))
+    # --- Save SLM / LoRA state for later evaluation ---
+    model_cfg = config.get("model", {})
+    use_lora = bool(model_cfg.get("use_lora", False))
 
-    # # args.config is the path like: runs/JOBID_TASKID/config.yaml (from Slurm)
-    # config_path = args.config
-    # run_dir = os.path.dirname(config_path) or "."
+    # args.config is the path like: runs/JOBID_TASKID/config.yaml (from Slurm)
+    config_path = os.path.abspath(args.config)
+    run_dir = os.path.dirname(config_path) or "."
 
-    # if use_lora:
-    #     # LoRA-enabled run: save all adapters (for all clusters) + tokenizer
-    #     save_dir = os.path.join(run_dir, "slm_lora_adapters")
-    #     policy_adapter.save_all_lora_adapters(save_dir)
-    # else:
-    #     # Baseline run (no LoRA): save the pure SLM + tokenizer
-    #     save_dir = os.path.join(run_dir, "slm_baseline")
-    #     llm_api.save_slm_baseline(save_dir)
-
-
+    if use_lora:
+        # LoRA-enabled run: save all adapters (for all clusters) + tokenizer
+        save_dir = os.path.join(run_dir, "slm_lora_adapters")
+        policy_adapter.save_all_lora_adapters(save_dir)
+    else:
+        # Baseline run (no LoRA): save the pure SLM + tokenizer
+        save_dir = os.path.join(run_dir, "slm_baseline")
+        llm_api.save_slm_baseline(save_dir)
 
     sys.stdout.close()
     sys.stdout = sys.__stdout__

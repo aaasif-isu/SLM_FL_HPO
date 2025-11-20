@@ -54,10 +54,18 @@ code/*.txt
 
 code/leaf/
 code/run.sh
+code/config
+code/finetune
+code/parse
+code/slm_lora_adapters/
+code/slm_baseline
+
 
 Results_analysis/*
 
 runs/
+
+
 
 
 .env

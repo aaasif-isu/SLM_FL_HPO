@@ -86,7 +86,24 @@ def train_model(model_name, num_classes, in_channels,
 
     # --- Setup code from original trainer (Unchanged) ---
     best_global_accuracy, no_improvement_count = 0.0, 0
-    best_model_path = f"best_model/best_{dataset_name}_c{num_clients}_imb{imbalance_ratio}.pth"
+
+    # Tag the checkpoint by FL mode and whether LoRA was used
+    lora_tag = "lora" if use_lora else "nolora"
+    best_model_dir = "best_model"
+    ensure_dir(best_model_dir)
+
+    best_model_filename = (
+        f"best_{model_name}_{dataset_name}_c{num_clients}_"
+        f"imb{imbalance_ratio}_epochs{global_epochs}_{fl_mode}_{lora_tag}.pth"
+    )
+
+    best_model_path = os.path.join(best_model_dir, best_model_filename)
+
+
+
+
+
+    #best_model_path = f"best_model/best_{dataset_name}_c{num_clients}_imb{imbalance_ratio}.pth"
     ensure_dir("best_model")
 
     # Pass fl_mode to prepare_training
